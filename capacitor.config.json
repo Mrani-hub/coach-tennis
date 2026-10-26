@@ -1,6 +1,6 @@
 {
-  "appId": "ma.uscm.coach",
-  "appName": "Coach USCM",
+  "appId": "ma.coachtennis.app",
+  "appName": "Coach Tennis",
   "webDir": "www",
   "backgroundColor": "#1d5c45",
   "android": {

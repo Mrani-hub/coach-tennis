@@ -1,8 +1,8 @@
-# Compile Coach USCM à chaque envoi sur la branche main (ou à la demande : onglet Actions → Run workflow).
+# Compile Coach Tennis à chaque envoi sur la branche main (ou à la demande : onglet Actions → Run workflow).
 #
 #  Android : APK signé à envoyer directement aux coachs (secrets ANDROID_*).
 #            Il est aussi joint à une « Release » GitHub : lien de téléchargement fixe
-#            …/releases/latest/download/CoachUSCM.apk
+#            …/releases/latest/download/CoachTennis.apk
 #  iPhone  : appli web installable depuis Safari (écran d'accueil), téléchargeable en artifact
 #            et mise en ligne sur GitHub Pages si la variable PUBLIER_PAGES vaut true.
 #  iOS natif (option payante, compte Apple Developer) : TestFlight si la variable IOS_TESTFLIGHT vaut true.
@@ -47,8 +47,8 @@ jobs:
       - name: Clé de signature
         if: env.KS_B64 != ''
         run: |
-          echo "$KS_B64" | base64 --decode > "$RUNNER_TEMP/uscm-release.jks"
-          echo "USCM_KEYSTORE_PATH=$RUNNER_TEMP/uscm-release.jks" >> "$GITHUB_ENV"
+          echo "$KS_B64" | base64 --decode > "$RUNNER_TEMP/cle-release.jks"
+          echo "USCM_KEYSTORE_PATH=$RUNNER_TEMP/cle-release.jks" >> "$GITHUB_ENV"
       - name: Compiler l'APK
         working-directory: android
         env:
@@ -62,31 +62,31 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/sortie"
           if [ -n "$USCM_KEYSTORE_PATH" ]; then
             ./gradlew --no-daemon assembleRelease
-            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/sortie/CoachUSCM.apk"
-            echo "### ✅ APK Coach USCM $VERSION_NAME signé" >> "$GITHUB_STEP_SUMMARY"
-            echo "Téléchargez l'artifact **CoachUSCM-$VERSION_NAME-Android** ci-dessous, ou la Release du dépôt." >> "$GITHUB_STEP_SUMMARY"
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/sortie/CoachTennis.apk"
+            echo "### ✅ APK Coach Tennis $VERSION_NAME signé" >> "$GITHUB_STEP_SUMMARY"
+            echo "Téléchargez l'artifact **CoachTennis-$VERSION_NAME-Android** ci-dessous, ou la Release du dépôt." >> "$GITHUB_STEP_SUMMARY"
           else
             ./gradlew --no-daemon assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/sortie/CoachUSCM-TEST.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/sortie/CoachTennis-TEST.apk"
             echo "### ⚠️ APK de test uniquement" >> "$GITHUB_STEP_SUMMARY"
             echo "Les secrets ANDROID_* ne sont pas renseignés : cet APK ne pourra pas être mis à jour par-dessus. Ne l'envoyez pas aux coachs." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Artifact APK
         uses: actions/upload-artifact@v5
         with:
-          name: CoachUSCM-${{ env.VERSION_NAME }}-Android
+          name: CoachTennis-${{ env.VERSION_NAME }}-Android
           path: sortie/*.apk
       - name: Release (lien de téléchargement fixe)
         if: env.KS_B64 != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION_NAME }}
-          name: Coach USCM ${{ env.VERSION_NAME }}
-          files: sortie/CoachUSCM.apk
+          name: Coach Tennis ${{ env.VERSION_NAME }}
+          files: sortie/CoachTennis.apk
           make_latest: true
           body: |
-            APK Android de Coach USCM, version ${{ env.VERSION_NAME }}.
-            Installation : ouvrir CoachUSCM.apk sur le téléphone et autoriser l'installation depuis cette source.
+            APK Android de Coach Tennis, version ${{ env.VERSION_NAME }}.
+            Installation : ouvrir CoachTennis.apk sur le téléphone et autoriser l'installation depuis cette source.
             Une version déjà installée est mise à jour sans perte de données.
 
   iphone:
@@ -105,7 +105,7 @@ jobs:
       - name: Artifact (dossier à héberger)
         uses: actions/upload-artifact@v5
         with:
-          name: CoachUSCM-${{ env.VERSION_NAME }}-iPhone-web
+          name: CoachTennis-${{ env.VERSION_NAME }}-iPhone-web
           path: pwa/
       - name: Préparer GitHub Pages
         if: vars.PUBLIER_PAGES == 'true'
@@ -161,10 +161,10 @@ jobs:
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           sed "s/__TEAM_ID__/${TEAM_ID}/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
-            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/CoachUSCM.xcarchive" \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/CoachTennis.xcarchive" \
             DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
             MARKETING_VERSION="$VERSION_NAME" CURRENT_PROJECT_VERSION="$VERSION_CODE" \
             "${AUTH[@]}" archive | tail -20
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/CoachUSCM.xcarchive" \
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/CoachTennis.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
             "${AUTH[@]}" | tail -20

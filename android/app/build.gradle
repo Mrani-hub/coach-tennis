@@ -8,10 +8,10 @@ def ks = { String key, String env -> System.getenv(env) ?: ksProps.getProperty(k
 def releaseStore = ks('storeFile', 'USCM_KEYSTORE_PATH')
 
 android {
-    namespace = "ma.uscm.coach"
+    namespace = "ma.coachtennis.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "ma.uscm.coach"
+        applicationId "ma.coachtennis.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode((System.getenv('USCM_VERSION_CODE') ?: '1') as int)

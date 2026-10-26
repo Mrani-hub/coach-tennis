@@ -1,4 +1,4 @@
-package ma.uscm.coach;
+package ma.coachtennis.app;
 
 import com.getcapacitor.BridgeActivity;
 

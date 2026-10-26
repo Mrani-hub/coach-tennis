@@ -1,4 +1,4 @@
-<title>Coach USCM</title>
+<title>Coach Tennis</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#1d5c45">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -295,7 +295,7 @@ textarea{min-height:70px;resize:vertical}
 </style>
 
 <header class="top"><div class="top-in">
-  <div class="brand"><span class="ball" aria-hidden="true"></span><div><h1 id="hTitle">Coach USCM</h1><small id="hSub">Planning des entraînements</small></div></div>
+  <div class="brand"><span class="ball" aria-hidden="true"></span><div><h1 id="hTitle">Coach Tennis</h1><small id="hSub">Planning des entraînements</small></div></div>
   <span class="sp"></span>
   <button class="btn-top" id="quickAdd" type="button">+ Séance</button>
 </div></header>
@@ -414,7 +414,7 @@ function seed(){
       const niveaux={};THEMES.forEach((t,i)=>niveaux[t]=Math.max(1,Math.min(5,base+[1,0,-1,0][(i+k)%4])));
       return {id:uid(),prenom,nom,naissance,niveau,tel,classement:'',notes:'',niveaux,evol:[]}});
   const [yas,sal,ada,lin,ray,ine,meh,nou]=J;
-  const e1={id:uid(),nom:'École de tennis USCM',lieu:'Courts USCM'}, e2={id:uid(),nom:'Centre de formation Jeunes',lieu:'Courts USCM — terre battue'};
+  const e1={id:uid(),nom:'École de tennis du club',lieu:'Courts du club'}, e2={id:uid(),nom:'Centre de formation Jeunes',lieu:'Courts du club — terre battue'};
   const g=(ecoleId,nom,niveau,ids,creneaux)=>({id:uid(),ecoleId,nom,niveau,joueurIds:ids.map(x=>x.id),creneaux,debutPeriode:addDays(m,-28),finPeriode:''});
   const groupes=[
     g(e1.id,'Mini-tennis','U8 · balles rouges',[ine,nou],[{jour:3,debut:'14:00',duree:60,court:'Court 3'},{jour:6,debut:'10:00',duree:60,court:'Court 3'}]),
@@ -447,7 +447,7 @@ function seed(){
   ada.classements=[{date:'2026-01-20',valeur:'U14 · 18e national',points:'420',note:'Classement de début de saison'},{date:'2026-06-30',valeur:'U14 · 11e national',points:'610',note:'Mise à jour de fin de saison'}];
   meh.classements=[{date:'2026-01-20',valeur:'U16 · 25e national',points:'380',note:''},{date:'2026-06-30',valeur:'U16 · 19e national',points:'455',note:''}];
   yas.classements=[{date:'2026-06-30',valeur:'U12 · 34e national',points:'210',note:'Premier classement'}];
-  return {v:1,demo:true,coach:'Karim',club:'USCM',courts:['Court 1','Court 2','Court 3','Court 4','Court 5','Court 6'],
+  return {v:1,demo:true,coach:'Karim',club:'Mon club',courts:['Court 1','Court 2','Court 3','Court 4','Court 5','Court 6'],
     joueurs:J,ecoles:[e1,e2],groupes,seances,annulations:{},presences:{},
     themesCoach:THEMES.filter(t=>t!=='Physique'),
     pays:'Maroc',instanceSigle:'FRMT',instanceNom:'Fédération Royale Marocaine de Tennis',
@@ -540,10 +540,10 @@ function renderTabs(){
 function go(tab){UI.tab=tab;try{sessionStorage.setItem('uscm-tab',tab)}catch(e){}render();window.scrollTo(0,0)}
 function render(){
   const qa=document.getElementById('quickAdd');
-  if(!APPMODE){document.getElementById('hTitle').textContent='Coach USCM';document.getElementById('hSub').textContent='Entraînements tennis jeunes';qa.hidden=true;renderTabs();document.getElementById('app').innerHTML=vAccueil();return}
+  if(!APPMODE){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Entraînements tennis jeunes';qa.hidden=true;renderTabs();document.getElementById('app').innerHTML=vAccueil();return}
   if(APPMODE==='joueur'){const {sel,list}=srcSel();
     document.getElementById('hTitle').textContent=sel||'Espace joueur';
-    document.getElementById('hSub').textContent=sel?`Espace joueur · ${list[0].data.coach.club||''}`:'Coach USCM';
+    document.getElementById('hSub').textContent=sel?`Espace joueur · ${list[0].data.coach.club||''}`:'Coach Tennis';
     qa.hidden=!PJ.sources.length;qa.disabled=false;qa.textContent='Actualiser';
     if(!TABS_J.some(x=>x[0]===UI.tab))UI.tab='jprog';renderTabs();
     document.getElementById('app').innerHTML=({jprog:vJProg,jprogres:vJProgres,jmatchs:vJMatchs,jreg:vJReglages}[UI.tab]||vJProg)();return}
@@ -659,7 +659,7 @@ function vReglages(){
   return `<h2>Réglages</h2>
   <div class="panel f">
     <label class="fl">Prénom du coach<input id="sCoach" value="${esc(S.coach)}"></label>
-    <label class="fl">Club<input id="sClub" value="${esc(S.club)}"></label>
+    <label class="fl">Club<input id="sClub" value="${esc(S.club)}" placeholder="ex. USCM"></label>
     <label class="fl full">Courts (séparés par des virgules)<input id="sCourts" value="${esc(S.courts.join(', '))}"></label>
     <label class="fl">Pays<input id="sPays" value="${esc(S.pays)}" list="paysL"><datalist id="paysL"><option value="Maroc"><option value="France"><option value="Belgique"><option value="Suisse"><option value="Tunisie"><option value="Algérie"><option value="Sénégal"><option value="Côte d’Ivoire"><option value="Canada"></datalist></label>
     <label class="fl">Sigle de l’instance de classement<input id="sSigle" value="${esc(S.instanceSigle)}" placeholder="ex. FRMT"></label>
@@ -967,7 +967,7 @@ function formEcole(e){
   const isNew=!e;e=e||{id:uid(),nom:'',lieu:''};
   const n=S.groupes.filter(g=>g.ecoleId===e.id).length;
   openSheet(`${head(isNew?'Nouvelle école':'Modifier l’école')}
-  <div class="f"><label class="fl full">Nom<input id="eN" value="${esc(e.nom)}" placeholder="ex. École de tennis USCM"></label>
+  <div class="f"><label class="fl full">Nom<input id="eN" value="${esc(e.nom)}" placeholder="ex. École de tennis du club"></label>
   <label class="fl full">Lieu<input id="eL" value="${esc(e.lieu)}"></label></div><div id="eW"></div>
   <div class="row"><button class="btn pri" type="button" id="eSave">Enregistrer</button><button class="btn" type="button" data-close>Annuler</button>${isNew?'':`<span style="flex:1"></span><button class="btn danger" type="button" id="eDel">Supprimer</button>`}</div>`);
   $('eSave').onclick=()=>{const nom=$('eN').value.trim();if(!nom){$('eW').innerHTML='<div class="warnbox">Donnez un nom à l’école.</div>';return}
@@ -1450,7 +1450,7 @@ async function driveSave(id,name,content,mime,parent,interactive){
 async function driveFolder(interactive){
   const D=S.drive=S.drive||{};
   if(D.folderId){try{const f=await gfetch(`${DAPI}/files/${D.folderId}?fields=id,trashed`,{},interactive);if(!f.trashed)return D.folderId}catch(e){if(e.code==='login')throw e}}
-  D.folderId=(await gfetch(`${DAPI}/files?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:`Coach USCM – ${S.coach||'coach'}`,mimeType:'application/vnd.google-apps.folder'})},interactive)).id;
+  D.folderId=(await gfetch(`${DAPI}/files?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:`Coach Tennis – ${S.coach||'coach'}`,mimeType:'application/vnd.google-apps.folder'})},interactive)).id;
   return D.folderId}
 
 /* ---- Contenu publié pour un joueur ---- */
@@ -1483,11 +1483,11 @@ async function publier(interactive=true,silencieux=false){
     const folder=await driveFolder(interactive);let n=0;
     for(const p of L){const P=p.partage;if(!P.key)P.key=newKey();
       const txt=await chiffrer(P.key,payloadJoueur(p)),neuf=!P.fileId;
-      P.fileId=await driveSave(P.fileId,`CoachUSCM-joueur-${p.id}.uscm`,txt,'application/json',folder,interactive);
+      P.fileId=await driveSave(P.fileId,`CoachTennis-joueur-${p.id}.json`,txt,'application/json',folder,interactive);
       if(neuf||!P.public){await gfetch(`${DAPI}/files/${P.fileId}/permissions?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})},interactive);P.public=true}
       P.publie=new Date().toISOString();n++}
     const D=S.drive;D.lastPublish=new Date().toISOString();D.dirty=false;
-    D.backupId=await driveSave(D.backupId,'CoachUSCM-sauvegarde.json',JSON.stringify(S),'application/json',folder,interactive);
+    D.backupId=await driveSave(D.backupId,'CoachTennis-sauvegarde.json',JSON.stringify(S),'application/json',folder,interactive);
     save(true);
     if(!silencieux)toast(n?`${n} programme${n>1?'s':''} publié${n>1?'s':''} sur Google Drive`:'Sauvegarde envoyée sur Google Drive');
     if(UI.tab==='reglages'||UI.tab==='jour')render();
@@ -1495,9 +1495,9 @@ async function publier(interactive=true,silencieux=false){
   }catch(e){if(!silencieux)toast(e.message||'Publication impossible')}
   finally{publishing=false;document.querySelectorAll('[data-publish]').forEach(b=>{b.disabled=false;if(b.dataset.l)b.textContent=b.dataset.l})}}
 async function restaurerDrive(){
-  try{const q=encodeURIComponent("name='CoachUSCM-sauvegarde.json' and trashed=false");
+  try{const q=encodeURIComponent("name='CoachTennis-sauvegarde.json' and trashed=false");
     const r=await gfetch(`${DAPI}/files?q=${q}&orderBy=modifiedTime desc&pageSize=1&fields=files(id,modifiedTime)`,{},true);
-    if(!r.files||!r.files.length){toast('Aucune sauvegarde Coach USCM trouvée sur ce compte Google');return}
+    if(!r.files||!r.files.length){toast('Aucune sauvegarde Coach Tennis trouvée sur ce compte Google');return}
     const tok=await googleToken(false),res=await fetch(`${DAPI}/files/${r.files[0].id}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
     if(!res.ok)throw new Error('Lecture impossible');restoreFrom(await res.json());
   }catch(e){toast(e.message||'Restauration impossible')}}
@@ -1517,7 +1517,7 @@ function espaceJoueurHtml(p){
     <button class="btn pri" type="button" data-jshare="${p.id}">Activer l’espace joueur</button></div>`;
   const lien=lienJoueur(p),code=codeJoueur(p),D=S.drive||{};
   if(!code)return `<div><h3 style="margin-bottom:4px">Espace du joueur</h3><p class="small" style="margin:0 0 8px">Publiez une première fois pour créer le lien d’accès de ${esc(p.prenom)}.</p><button class="btn pri" type="button" data-publish>Publier sur Google Drive</button></div>`;
-  const msg=`Bonjour ${p.prenom}, voici ton programme d’entraînement Coach USCM : ${lien||code}`;
+  const msg=`Bonjour ${p.prenom}, voici ton programme d’entraînement Coach Tennis : ${lien||code}`;
   return `<div><h3 style="margin-bottom:4px">Espace du joueur</h3>
     <div class="share">${lien?`<div class="qr" aria-label="QR code d’accès">${qrSvg(lien)}</div>`:''}
     <div class="list" style="gap:6px;min-width:0">
@@ -1542,10 +1542,11 @@ function partageReglagesHtml(){
   if(!driveReady())return `<div class="panel list"><h3>Espace joueurs et Google Drive</h3><p class="small muted" style="margin:0;max-width:65ch">Le partage du programme avec les joueurs et la sauvegarde sur Google Drive fonctionnent dans l’appli Android et la version iPhone, une fois la connexion Google configurée (voir le guide).</p></div>`+pinPanel;
   const conn=gTok&&gTok.exp>Date.now();
   return `<div class="panel list"><h3>Espace joueurs et Google Drive</h3>
-    <p class="small muted" style="margin:0;max-width:65ch">Vos joueurs voient leur programme grâce à des fichiers chiffrés déposés sur votre Google Drive, dans le dossier « Coach USCM ». Une sauvegarde complète de vos données y est aussi envoyée à chaque publication.</p>
+    <p class="small muted" style="margin:0;max-width:65ch">Vos joueurs voient leur programme grâce à des fichiers chiffrés déposés sur votre Google Drive, dans le dossier « Coach Tennis ». Une sauvegarde complète de vos données y est aussi envoyée à chaque publication.</p>
     <div class="small">${n} joueur${n>1?'s':''} avec un espace actif · Dernière publication : <b>${D.lastPublish?fmtShort(D.lastPublish.slice(0,10))+' à '+D.lastPublish.slice(11,16):'jamais'}</b>${D.dirty&&n?' · <span style="color:var(--warn);font-weight:700">modifications à publier</span>':''}</div>
     <div class="small">${conn?'✓ Connecté à Google : vos modifications sont publiées automatiquement pendant 50 minutes.':'Non connecté à Google.'}</div>
-    <div class="row"><button class="btn pri" type="button" data-publish>Publier sur Google Drive</button><button class="btn" type="button" id="driveRestore">Restaurer depuis Google Drive</button></div></div>`+pinPanel;
+    <div class="row"><button class="btn pri" type="button" data-publish>Publier sur Google Drive</button><button class="btn" type="button" id="driveRestore">Restaurer depuis Google Drive</button></div>
+    ${CFG.playerUrl?`<a class="small" href="${esc(CFG.playerUrl.replace(/#.*$/,'').replace(/\/?$/,'/'))}confidentialite.html" target="_blank" rel="noopener">Données et confidentialité</a>`:''}</div>`+pinPanel;
 }
 /* Bandeau sur l'accueil du coach */
 function bandeauPublier(){const D=S.drive||{};if(!driveReady()||!D.dirty||!partages().length)return '';
@@ -1562,7 +1563,7 @@ function versCoach(){
 
 function vAccueil(){
   return `<div class="welcome"><span class="ball big" aria-hidden="true"></span>
-    <h2>Bienvenue sur Coach USCM</h2><p class="muted" style="margin:0;max-width:46ch">Planification et suivi des entraînements de tennis jeunes. Qui utilise l’appli sur cet appareil ?</p>
+    <h2>Bienvenue sur Coach Tennis</h2><p class="muted" style="margin:0;max-width:46ch">Planification et suivi des entraînements de tennis jeunes. Qui utilise l’appli sur cet appareil ?</p>
     <div class="choice">
       <button type="button" class="choix" id="pickCoach"><b>Je suis coach</b><span>Je planifie les séances et les cours, je suis mes joueurs.</span></button>
       <button type="button" class="choix" id="pickJoueur"><b>Je suis joueur</b><span>Je consulte le programme préparé par mon coach.</span></button>
@@ -1728,7 +1729,7 @@ document.addEventListener('click',ev=>{
       return sha256('uscm-pin:'+a).then(h=>{S.pin=h;save();render();toast('Code de l’espace coach enregistré')})}
     case 'pinDel':S.pin=null;save();render();return toast('Code supprimé');
     case 'quickAdd':if(APPMODE==='joueur')return actualiserJ();return formSeance(null,UI.tab==='planning'&&UI.week!==monday(today())?{date:UI.week}:{});
-    case 'saveSettings':S.coach=$('sCoach').value.trim();S.club=$('sClub').value.trim()||'USCM';
+    case 'saveSettings':S.coach=$('sCoach').value.trim();S.club=$('sClub').value.trim();
       S.pays=$('sPays').value.trim();S.instanceSigle=$('sSigle').value.trim();S.instanceNom=$('sInst').value.trim();
       S.courts=$('sCourts').value.split(',').map(x=>x.trim()).filter(Boolean);if(!S.courts.length)S.courts=['Court 1'];save();render();return toast('Réglages enregistrés');
     case 'saveTc':{const sel=[...$('tcBox').querySelectorAll(':checked')].map(x=>x.value);
@@ -1746,9 +1747,9 @@ document.addEventListener('click',ev=>{
     case 'copyBk':{const txt=JSON.stringify(S);const ok=()=>toast('Sauvegarde copiée');
       const fb=()=>{$('bkIn').value=txt;$('bkIn').select();$('bkMsg').textContent='Copie automatique impossible : le texte est sélectionné, copiez-le manuellement.'};
       try{navigator.clipboard.writeText(txt).then(ok,fb)}catch(e){fb()}return}
-    case 'fileBk':{return offerFile(`Sauvegarde_CoachUSCM_${today()}.json`,new Blob([JSON.stringify(S)],{type:'application/json'}),'Sauvegarde exportée')}
+    case 'fileBk':{return offerFile(`Sauvegarde_CoachTennis_${today()}.json`,new Blob([JSON.stringify(S)],{type:'application/json'}),'Sauvegarde exportée')}
     case 'loadBk':{const inp=document.createElement('input');inp.type='file';inp.accept='application/json,.json,text/plain';
-      inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;try{restoreFrom(JSON.parse(await f.text()))}catch(e){toast('Ce fichier n’est pas une sauvegarde de Coach USCM')}};inp.click();return}
+      inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;try{restoreFrom(JSON.parse(await f.text()))}catch(e){toast('Ce fichier n’est pas une sauvegarde de Coach Tennis')}};inp.click();return}
     case 'restoreBk':try{restoreFrom(JSON.parse($('bkIn').value))}
       catch(e){$('bkMsg').textContent='Ce texte n’est pas une sauvegarde valide de l’application.';$('bkMsg').style.color='var(--danger)'}return;
     case 'wipe':$('wipeConfirm').innerHTML='<div class="warnbox">Tous les joueurs, séances et écoles seront effacés de cet appareil.</div><div class="row" style="margin-top:8px"><button class="btn danger solid" type="button" id="wipeYes">Tout effacer</button></div>';return;
@@ -1770,7 +1771,7 @@ document.addEventListener('change',ev=>{const el=ev.target,x=el.dataset&&(el.dat
 document.addEventListener('change',ev=>{if(ev.target.id==='sPays'&&/^maroc$/i.test(ev.target.value.trim())){$('sSigle').value='FRMT';$('sInst').value='Fédération Royale Marocaine de Tennis'}});
 document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='rOn'&&id!=='rAv')return;
   const on=$('rOn').checked,avant=+$('rAv').value;
-  if(on&&!(await Native.notifPermission(true))){$('rOn').checked=false;$('rMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone pour Coach USCM.';return}
+  if(on&&!(await Native.notifPermission(true))){$('rOn').checked=false;$('rMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone pour Coach Tennis.';return}
   S.rappels={on,avant};save();$('rMsg').textContent=on?`Rappels actifs, ${avant>=60?avant/60+' h':avant+' min'} avant chaque créneau.`:'Rappels désactivés.'});
 document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='jrOn'&&id!=='jrAv')return;
   const on=$('jrOn').checked;if(on&&!(await Native.notifPermission(true))){$('jrOn').checked=false;$('jrMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone.';return}

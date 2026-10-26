@@ -1,4 +1,4 @@
-/* Pont natif Coach USCM : exposé sous window.Native uniquement dans l'appli Android/iOS. */
+/* Pont natif Coach Tennis : exposé sous window.Native uniquement dans l'appli Android/iOS. */
 import { Capacitor, SystemBars, SystemBarsStyle, SystemBarType } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import { Filesystem, Directory } from '@capacitor/filesystem';

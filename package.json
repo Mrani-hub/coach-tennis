@@ -1,8 +1,8 @@
 {
-  "name": "coach-uscm",
+  "name": "coach-tennis",
   "version": "1.0.0",
   "private": true,
-  "description": "Coach USCM — planification et suivi des entraînements de tennis jeunes",
+  "description": "Coach Tennis — planification et suivi des entraînements de tennis jeunes",
   "scripts": {
     "build:web": "node scripts/build-web.mjs",
     "build:pwa": "node scripts/build-web.mjs --pwa",

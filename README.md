@@ -1,11 +1,11 @@
-# Coach USCM — Android et iPhone, en distribution directe
+# Coach Tennis — Android et iPhone, en distribution directe
 
 Application de planification et de suivi des entraînements de tennis jeunes, pour un coach.
-Pas de Google Play ni d'App Store : l'appli est envoyée directement aux coachs.
+Application générale, utilisable par n'importe quel club (le nom du club se règle dans l'appli). Pas de Google Play ni d'App Store : l'appli est envoyée directement aux coachs.
 
 | Téléphone | Ce que reçoit le coach | Coût |
 |---|---|---|
-| **Android** | Un fichier `CoachUSCM.apk` (par WhatsApp, e-mail, ou un lien) qu'il installe en le touchant. | Gratuit |
+| **Android** | Un fichier `CoachTennis.apk` (par WhatsApp, e-mail, ou un lien) qu'il installe en le touchant. | Gratuit |
 | **iPhone / iPad** | Un lien à ouvrir dans Safari, puis « Sur l'écran d'accueil ». L'appli s'installe avec son icône et marche sans connexion. | Gratuit |
 
 Pourquoi deux méthodes : Apple n'autorise pas l'installation d'un fichier d'appli envoyé directement sur un iPhone, contrairement à Android. Le lien Safari est la seule voie gratuite et sans compte Apple. La version iOS « native » reste possible par TestFlight (voir la fin), avec le compte Apple Developer à 99 USD par an.
@@ -19,7 +19,7 @@ Au premier lancement, l'appli demande **« Je suis coach »** ou **« Je suis jo
 - **Espace coach** : planning, joueurs, écoles, matchs… comme avant. Il peut être protégé par un code (Réglages → Protection de l'espace coach).
 - **Espace joueur** : le joueur voit le programme préparé par son coach (séances individuelles et cours collectifs des écoles), ses niveaux par thème, les comptes rendus du coach et ses matchs. Un joueur suivi par deux coachs, ou un parent avec plusieurs enfants, peut suivre plusieurs programmes.
 
-Le lien entre les deux passe par **le Google Drive du coach** : à chaque publication, l'appli dépose dans un dossier « Coach USCM » un fichier **chiffré** par joueur, et une sauvegarde complète des données du coach. Le joueur reçoit un lien (ou un QR code) contenant la clé de son fichier : lui seul peut le lire, sans compte ni mot de passe. Les données des coachs ne passent par aucun autre serveur.
+Le lien entre les deux passe par **le Google Drive du coach** : à chaque publication, l'appli dépose dans un dossier « Coach Tennis » un fichier **chiffré** par joueur, et une sauvegarde complète des données du coach. Le joueur reçoit un lien (ou un QR code) contenant la clé de son fichier : lui seul peut le lire, sans compte ni mot de passe. Les données des coachs ne passent par aucun autre serveur.
 
 ### Différences entre les deux versions
 
@@ -40,16 +40,16 @@ Le lien entre les deux passe par **le Google Drive du coach** : à chaque public
 
 ### 1. Mettre le projet sur GitHub
 
-1. Créez un compte sur github.com, puis un **nouveau dépôt** nommé `coach-uscm`.
+1. Créez un compte sur github.com, puis un **nouveau dépôt** nommé `coach-tennis`.
    - **Public (recommandé)** : liens de téléchargement directs pour les coachs et mise en ligne automatique de la version iPhone. Le code est visible, mais il ne contient aucune donnée : les données des coachs restent sur leurs téléphones, et la clé de signature reste secrète.
    - **Privé** : possible aussi, mais l'APK et la version iPhone sont alors à transmettre vous-même (voir plus bas).
 2. Envoyez le contenu de ce dossier sur la branche `main` :
    ```bash
-   cd coach-uscm-mobile
+   cd coach-tennis-mobile
    git init -b main
    git add .
-   git commit -m "Coach USCM 1.0"
-   git remote add origin https://github.com/VOTRE-COMPTE/coach-uscm.git
+   git commit -m "Coach Tennis 1.0"
+   git remote add origin https://github.com/Mrani-hub/coach-tennis.git
    git push -u origin main
    ```
    Ou, sans ligne de commande : page du dépôt → « Add file » → « Upload files », glissez tous les fichiers et dossiers.
@@ -69,25 +69,30 @@ Dépôt GitHub → **Settings → Secrets and variables → Actions → New repo
 2. **Settings → Secrets and variables → Actions → onglet Variables → New repository variable** :
    nom `PUBLIER_PAGES`, valeur `true`.
 
-L'adresse de la version iPhone sera : `https://VOTRE-COMPTE.github.io/coach-uscm/`
+L'adresse de la version iPhone sera : `https://mrani-hub.github.io/coach-tennis/`
 
 ### 4. Relier l'appli à Google Drive (espace joueur)
 
 À faire une seule fois, avec votre compte Google, sur **console.cloud.google.com** (environ 15 minutes). Sans cette étape, tout fonctionne sauf l'espace joueur et la sauvegarde sur Drive.
 
-1. **Créer un projet** : menu en haut → « Nouveau projet » → nom `Coach USCM`.
+1. **Créer un projet** : menu en haut → « Nouveau projet » → nom `Coach Tennis`.
 2. **Activer l'API Google Drive** : *API et services → Bibliothèque* → cherchez « Google Drive API » → **Activer**.
-3. **Écran de consentement** (*Google Auth Platform*) :
-   - *Branding* : nom de l'appli `Coach USCM`, votre e-mail.
-   - *Audience* : type **Externe**, puis **Publier l'application** (« En production »). L'appli ne demande que l'accès `drive.file` (uniquement les fichiers qu'elle crée elle-même) : Google ne demande pas de vérification pour cet accès.
+3. **Écran de connexion Google** (*Google Auth Platform*). Il ne s'agit pas du Play Store : c'est la fenêtre « Se connecter avec Google » que voit le coach.
+   - *Branding* : nom de l'appli `Coach Tennis`, votre e-mail d'assistance. **N'ajoutez pas de logo** (un logo oblige Google à vérifier l'appli).
+     Section *Domaine de l'application* :
+     - Page d'accueil : `https://mrani-hub.github.io/coach-tennis/`
+     - Règles de confidentialité : `https://mrani-hub.github.io/coach-tennis/confidentialite.html`
+     - Conditions d'utilisation : laisser vide.
+     Section *Domaines autorisés* : `mrani-hub.github.io`. Coordonnées du développeur : votre e-mail. **Enregistrer**.
+   - *Audience* : **Publier l'application** (« En production »). L'appli ne demande que l'accès `drive.file` (uniquement les fichiers qu'elle crée elle-même) : Google ne demande pas de vérification pour cet accès.
    - *Accès aux données* : ajoutez le champ d'application `.../auth/drive.file`.
-4. **Identifiant Web** : *Clients → Créer un client* → type **Application Web** → nom `Coach USCM web` → *Origines JavaScript autorisées* : `https://VOTRE-COMPTE.github.io` → **Créer**. Copiez l'**ID client** (il se termine par `.apps.googleusercontent.com`).
+4. **Identifiant Web** : *Clients → Créer un client* → type **Application Web** → nom `Coach Tennis web` → *Origines JavaScript autorisées* : `https://mrani-hub.github.io` → **Créer**. Copiez l'**ID client** (il se termine par `.apps.googleusercontent.com`).
 5. **Identifiant Android** : *Clients → Créer un client* → type **Android** :
-   - Nom du package : `ma.uscm.coach`
+   - Nom du package : `ma.coachtennis.app`
    - Empreinte SHA-1 : `F3:A6:5C:6C:B5:FC:04:EB:20:FE:B3:7F:EC:F5:32:05:CA:9F:9F:4D`
      (celle de votre clé `uscm-release.jks` ; l'APK de test non signé n'est pas reconnu)
 6. **Clé d'API** (lecture des programmes par les joueurs) : *API et services → Identifiants → Créer des identifiants → Clé API*. Dans « Restrictions relatives aux API », choisissez **Google Drive API** uniquement. Copiez la clé.
-7. Dans le dépôt, modifiez le fichier **`uscm.config.json`** (bouton crayon sur GitHub) :
+7. Dans le dépôt, modifiez le fichier **`config-google.json`** (bouton crayon sur GitHub) :
    ```json
    {
      "googleClientId": "1234…apps.googleusercontent.com",
@@ -110,13 +115,13 @@ Onglet **Actions** → « Compiler les applis » → **Run workflow** (elle se l
 ### Android
 
 - **Dépôt public** : envoyez ce lien, qui donne toujours la dernière version :
-  `https://github.com/VOTRE-COMPTE/coach-uscm/releases/latest/download/CoachUSCM.apk`
-- **Dépôt privé** : téléchargez l'artifact `CoachUSCM-1.0.x-Android` dans la compilation terminée, dézippez-le et envoyez `CoachUSCM.apk` par WhatsApp ou e-mail.
+  `https://github.com/Mrani-hub/coach-tennis/releases/latest/download/CoachTennis.apk`
+- **Dépôt privé** : téléchargez l'artifact `CoachTennis-1.0.x-Android` dans la compilation terminée, dézippez-le et envoyez `CoachTennis.apk` par WhatsApp ou e-mail.
 
 ### iPhone
 
-- **Dépôt public** : envoyez le lien `https://VOTRE-COMPTE.github.io/coach-uscm/`.
-- **Dépôt privé** : téléchargez l'artifact `CoachUSCM-1.0.x-iPhone-web`, dézippez-le, puis glissez le dossier sur **app.netlify.com/drop** (gratuit). Netlify donne un lien en `https://….netlify.app` à envoyer aux coachs. Pour une mise à jour, glissez le nouveau dossier sur le même site Netlify.
+- **Dépôt public** : envoyez le lien `https://mrani-hub.github.io/coach-tennis/`.
+- **Dépôt privé** : téléchargez l'artifact `CoachTennis-1.0.x-iPhone-web`, dézippez-le, puis glissez le dossier sur **app.netlify.com/drop** (gratuit). Netlify donne un lien en `https://….netlify.app` à envoyer aux coachs. Pour une mise à jour, glissez le nouveau dossier sur le même site Netlify.
 
 Le texte d'installation à envoyer aux coachs est prêt dans `INSTALLATION-COACHS.md`.
 
@@ -141,7 +146,7 @@ Le message à envoyer aux joueurs est prêt dans `INSTALLATION-JOUEURS.md`.
 1. Remplacez `src/app.html` par la nouvelle version du fichier de l'appli.
 2. Envoyez-le sur GitHub. La compilation repart et le numéro de version augmente (1.0.1, 1.0.2…).
 3. **Android** : envoyez le nouvel APK (le lien « latest » pointe déjà dessus). Les coachs l'installent par-dessus, leurs données sont gardées.
-   **iPhone** : rien à faire. L'appli se met à jour à la prochaine ouverture avec du réseau et affiche « Coach USCM a été mis à jour ».
+   **iPhone** : rien à faire. L'appli se met à jour à la prochaine ouverture avec du réseau et affiche « Coach Tennis a été mis à jour ».
 
 ---
 
@@ -150,7 +155,7 @@ Le message à envoyer aux joueurs est prêt dans `INSTALLATION-JOUEURS.md`.
 ```
 src/app.html            L'appli (le même fichier que la version web). C'est le seul fichier à modifier.
 src/native.js           Le pont avec le téléphone Android/iOS (stockage, partage, rappels, bouton retour, connexion Google).
-uscm.config.json        Identifiants Google pour l'espace joueur (voir « Relier l'appli à Google Drive »).
+config-google.json        Identifiants Google pour l'espace joueur (voir « Relier l'appli à Google Drive »).
 scripts/build-web.mjs   Prépare l'appli : www/ pour Android/iOS natif, pwa/ pour l'iPhone via Safari (--pwa).
 scripts/draw-assets.py  Dessine l'icône et l'écran de démarrage (sources dans assets/).
 android/                Projet Android Studio.
@@ -160,7 +165,7 @@ INSTALLATION-COACHS.md  Message d'installation à envoyer aux coachs.
 INSTALLATION-JOUEURS.md Message à envoyer aux joueurs avec leur lien.
 ```
 
-Identifiant de l'appli : `ma.uscm.coach` — nom affiché : **Coach USCM**.
+Identifiant de l'appli : `ma.coachtennis.app` — nom affiché : **Coach Tennis**.
 
 ## Compiler l'APK sur votre ordinateur (sans GitHub)
 
@@ -170,7 +175,7 @@ Prérequis : **Node.js 22** et **Android Studio** récent (SDK Android 36).
    ```
    storeFile=uscm-release.jks
    storePassword=LE_MOT_DE_PASSE
-   keyAlias=coach-uscm
+   keyAlias=coach-tennis
    keyPassword=LE_MOT_DE_PASSE
    ```
 2. Puis :
@@ -189,7 +194,7 @@ Pour la version iPhone : `npm run build:pwa`, puis hébergez le dossier `pwa/` (
 Si un jour vous voulez les rappels de séances sur iPhone, il faut l'appli iOS native. Sans App Store, la seule voie est **TestFlight** : jusqu'à 10 000 testeurs invités par e-mail ou par lien public. Chaque version reste valable 90 jours, puis il faut en envoyer une nouvelle.
 
 1. Compte **Apple Developer Program** (99 USD par an).
-2. developer.apple.com → *Identifiers* : enregistrez `ma.uscm.coach`. App Store Connect → *Apps* → **+** : créez « Coach USCM ».
+2. developer.apple.com → *Identifiers* : enregistrez `ma.coachtennis.app`. App Store Connect → *Apps* → **+** : créez « Coach Tennis ».
 3. App Store Connect → *Utilisateurs et accès* → *Intégrations* → **Clés API** : créez une clé au rôle **Admin**, téléchargez le fichier `.p8`.
 4. Secrets GitHub : `APPLE_API_KEY_P8` (contenu du fichier `.p8`), `APPLE_API_KEY_ID`, `APPLE_API_ISSUER_ID`, `APPLE_TEAM_ID`. Variable : `IOS_TESTFLIGHT` = `true`.
 5. La compilation envoie alors chaque version sur TestFlight. Pour les testeurs externes, Apple fait une vérification rapide de la première version.

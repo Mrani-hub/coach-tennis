@@ -24,14 +24,14 @@ const libs = {
   'qrcode.js': 'qrcode-generator/qrcode.js'
 };
 
-/* Réglages Google (uscm.config.json) — l'adresse de la version iPhone est déduite du dépôt GitHub si elle est vide */
-const cfg = JSON.parse(readFileSync(join(root, 'uscm.config.json'), 'utf8'));
+/* Réglages Google (config-google.json) — l'adresse de la version iPhone est déduite du dépôt GitHub si elle est vide */
+const cfg = JSON.parse(readFileSync(join(root, 'config-google.json'), 'utf8'));
 if (!cfg.playerUrl && process.env.GITHUB_REPOSITORY) {
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   cfg.playerUrl = `https://${owner.toLowerCase()}.github.io/${repo}/`;
 }
 const cfgJs = `<script>window.USCM_CONFIG=${JSON.stringify({ googleClientId: cfg.googleClientId || '', googleApiKey: cfg.googleApiKey || '', playerUrl: cfg.playerUrl || '' })};</script>`;
-if (!cfg.googleClientId || !cfg.googleApiKey) console.warn('⚠ uscm.config.json : identifiants Google vides — le partage avec les joueurs sera désactivé.');
+if (!cfg.googleClientId || !cfg.googleApiKey) console.warn('⚠ config-google.json : identifiants Google vides — le partage avec les joueurs sera désactivé.');
 for (const [dst, src] of Object.entries(libs)) copyFileSync(nm(src), join(www, 'lib', dst));
 
 /* 2. Polices (latin + latin étendu seulement) */
@@ -79,7 +79,7 @@ if (PWA) {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Coach USCM">
+<meta name="apple-mobile-web-app-title" content="Coach Tennis">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 ` + head;
@@ -88,7 +88,7 @@ if (PWA) {
 if ('serviceWorker' in navigator) {
   const had = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch(() => {});
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && typeof toast === 'function') toast('Coach USCM a été mis à jour'); });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && typeof toast === 'function') toast('Coach Tennis a été mis à jour'); });
 }
 /* Ouvert dans Safari sur iPhone/iPad sans être installé : expliquer l'ajout à l'écran d'accueil */
 (function () {
@@ -98,7 +98,7 @@ if ('serviceWorker' in navigator) {
   if (!ios || installed || seen) return;
   const b = document.createElement('div');
   b.className = 'install-hint';
-  b.innerHTML = '<b>Installer Coach USCM sur cet iPhone</b><span>Touchez <b>Partager</b> <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v7h14v-7"/></svg> en bas de Safari, puis <b>Sur l’écran d’accueil</b>. L’appli fonctionnera ensuite sans connexion.</span><button type="button" aria-label="Fermer">✕</button>';
+  b.innerHTML = '<b>Installer Coach Tennis sur cet iPhone</b><span>Touchez <b>Partager</b> <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v7h14v-7"/></svg> en bas de Safari, puis <b>Sur l’écran d’accueil</b>. L’appli fonctionnera ensuite sans connexion.</span><button type="button" aria-label="Fermer">✕</button>';
   b.querySelector('button').onclick = () => { b.remove(); try { localStorage.setItem('uscm-install-hint', '1'); } catch (e) {} };
   document.body.appendChild(b);
 })();
@@ -137,7 +137,7 @@ if (PWA) {
   for (const [name, px] of [['icon-192.png', 192], ['icon-512.png', 512], ['apple-touch-icon.png', 180]])
     await sharp(src).resize(px, px).png().toFile(join(www, 'icons', name));
   writeFileSync(join(www, 'manifest.webmanifest'), JSON.stringify({
-    name: 'Coach USCM', short_name: 'Coach USCM', lang: 'fr', dir: 'ltr',
+    name: 'Coach Tennis', short_name: 'Coach Tennis', lang: 'fr', dir: 'ltr',
     description: 'Planification et suivi des entraînements de tennis jeunes',
     start_url: './', scope: './', display: 'standalone', orientation: 'any',
     background_color: '#1d5c45', theme_color: '#1d5c45', categories: ['sports'],
@@ -152,8 +152,8 @@ if (PWA) {
   walk('');
   const hash = createHash('sha256'); for (const f of files.sort()) hash.update(f).update(readFileSync(join(www, f)));
   const version = hash.digest('hex').slice(0, 12);
-  writeFileSync(join(www, 'sw.js'), `// Coach USCM — fonctionnement hors ligne. Version ${version}
-const CACHE = 'coach-uscm-${version}';
+  writeFileSync(join(www, 'sw.js'), `// Coach Tennis — fonctionnement hors ligne. Version ${version}
+const CACHE = 'coach-tennis-${version}';
 const FILES = ${JSON.stringify(['./', ...files])};
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -163,6 +163,47 @@ self.addEventListener('fetch', e => {
 });
 `);
 }
-for (const f of ['index.html', 'fonts/fonts.css', 'lib/pdf.min.js', ...(PWA ? ['sw.js', 'manifest.webmanifest', 'icons/icon-512.png'] : ['native.js'])])
+/* 6. Page de confidentialité (demandée par Google pour l'écran de connexion) */
+if (PWA) {
+  const repo = process.env.GITHUB_REPOSITORY || '';
+  const contact = repo ? `<a href="https://github.com/${repo}/issues">la page « Issues » du projet</a>` : 'le responsable de l’application dans votre club';
+  writeFileSync(join(www, 'confidentialite.html'), `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coach Tennis – Confidentialité</title>
+<style>
+:root{--bg:#f2f4ef;--ink:#15231c;--muted:#5b6a61;--court:#1d5c45;--line:#d8e0d6}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1612;--ink:#e6eee8;--muted:#9aaaa0;--court:#4aa882;--line:#28382f}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:68ch;margin:0 auto;padding:32px max(16px,env(safe-area-inset-left,0px)) 48px max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:28px;line-height:1.2;color:var(--court);margin:0 0 4px}h2{font-size:19px;margin:28px 0 6px}
+p,li{color:var(--ink)}small{color:var(--muted)}a{color:var(--court)}ul{padding-left:20px}
+</style></head><body><main>
+<h1>Coach Tennis — confidentialité</h1>
+<small>Dernière mise à jour : ${new Date().toISOString().slice(0, 10)}</small>
+<p>Coach Tennis aide les coachs de tennis à planifier et suivre les entraînements de leurs joueurs. Cette page explique quelles données l’application utilise et où elles sont conservées.</p>
+<h2>Données enregistrées</h2>
+<p>Le coach saisit lui-même les informations utiles à l’entraînement : nom et date de naissance des joueurs, contact des parents, séances, niveaux par thème, comptes rendus, statistiques de match et classements. Ces données sont enregistrées <b>uniquement sur l’appareil du coach</b>. Il n’existe aucun serveur Coach Tennis : l’application n’envoie rien à ses auteurs.</p>
+<h2>Google Drive</h2>
+<p>Si le coach active l’espace joueur, il se connecte avec son propre compte Google. L’application demande uniquement l’autorisation <b>drive.file</b> : elle ne voit ni ne modifie aucun autre fichier du Drive que ceux qu’elle a elle-même créés. Elle y dépose, dans un dossier « Coach Tennis » :</p>
+<ul><li>une sauvegarde des données du coach, visible par lui seul ;</li>
+<li>un fichier par joueur ayant un espace actif, <b>chiffré</b> (AES-256). Seule la personne qui détient le lien personnel du joueur peut le lire. Le contact des parents n’y figure pas.</li></ul>
+<p>L’application ne lit aucune autre information du compte Google. Elle respecte la politique d’utilisation des données des services d’API Google, y compris les exigences d’utilisation limitée.</p>
+<h2>Espace joueur</h2>
+<p>Le joueur ouvre le lien envoyé par son coach. Son programme est enregistré sur son appareil pour être consultable hors connexion. Aucun compte n’est créé.</p>
+<h2>Ce que l’application ne fait pas</h2>
+<ul><li>Pas de publicité, pas de mesure d’audience, pas de traceur.</li><li>Aucune vente ni transmission de données à des tiers.</li></ul>
+<h2>Jeunes joueurs</h2>
+<p>Les joueurs sont souvent mineurs. Le coach informe les parents et recueille leur accord avant d’activer l’espace d’un joueur.</p>
+<h2>Supprimer les données</h2>
+<ul><li>Le coach peut retirer l’accès d’un joueur : son fichier est supprimé du Drive et le lien cesse de fonctionner.</li>
+<li>Le coach peut effacer toutes ses données dans les réglages, supprimer le dossier « Coach Tennis » de son Drive et révoquer l’accès sur <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+<li>Désinstaller l’application efface les données de l’appareil.</li></ul>
+<h2>Contact</h2>
+<p>Pour toute question : ${contact}.</p>
+<p><a href="./">Ouvrir Coach Tennis</a></p>
+</main></body></html>
+`);
+}
+for (const f of ['index.html', 'fonts/fonts.css', 'lib/pdf.min.js', ...(PWA ? ['sw.js', 'manifest.webmanifest', 'icons/icon-512.png', 'confidentialite.html'] : ['native.js'])])
   if (!existsSync(join(www, f))) throw new Error('manquant : ' + f);
 console.log(`${PWA ? 'pwa' : 'www'}/ prêt :`, fontCss.split('@font-face').length - 1, 'polices,', Object.keys(libs).length, 'bibliothèques.');

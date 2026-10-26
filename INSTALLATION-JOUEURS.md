@@ -7,7 +7,7 @@ Le bouton **WhatsApp** de la fiche prépare déjà un message avec le lien. Vers
 
 Bonjour,
 
-Voici le programme d'entraînement de **PRÉNOM** préparé par son coach, dans l'application Coach USCM :
+Voici le programme d'entraînement de **PRÉNOM** préparé par son coach, dans l'application Coach Tennis :
 
 👉 LIEN_PERSONNEL
 

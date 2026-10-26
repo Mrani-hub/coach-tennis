@@ -1,4 +1,4 @@
-# Dessine l'icône et l'écran de démarrage de Coach USCM (sources pour @capacitor/assets).
+# Dessine l'icône et l'écran de démarrage de Coach Tennis (sources pour @capacitor/assets).
 import math, sys
 from PIL import Image, ImageDraw, ImageFont
 
@@ -66,7 +66,7 @@ def splash(base, path, ink):
     im = Image.new('RGBA', (s, s), base + (255,)); d = ImageDraw.Draw(im, 'RGBA')
     ball(im, s / 2, s * .455, s * .055)
     f1 = ImageFont.truetype(FONT_D, int(s * .052)); f2 = ImageFont.truetype(FONT_B, int(s * .0165))
-    t1, t2 = 'COACH USCM', 'Entraînements tennis jeunes'
+    t1, t2 = 'COACH TENNIS', 'Entraînements tennis jeunes'
     d.text((s / 2, s * .545), t1, font=f1, fill=ink, anchor='mm')
     d.text((s / 2, s * .59), t2, font=f2, fill=ink + (200,) if len(ink) == 3 else ink, anchor='mm')
     im.resize((W, W), Image.LANCZOS).convert('RGB').save(path)
