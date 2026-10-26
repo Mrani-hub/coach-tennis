@@ -1,0 +1,34 @@
+{
+  "name": "coach-uscm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Coach USCM — planification et suivi des entraînements de tennis jeunes",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "sync": "npm run build:web && npx cap sync",
+    "assets": "npx capacitor-assets generate --iconBackgroundColor '#1d5c45' --iconBackgroundColorDark '#0e1612' --splashBackgroundColor '#1d5c45' --splashBackgroundColorDark '#0e1612'",
+    "android": "npm run sync && npx cap open android",
+    "ios": "npm run sync && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
+    "@fontsource/saira-condensed": "5.3.0",
+    "@fontsource/source-sans-3": "5.3.1",
+    "esbuild": "^0.28.2",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2",
+    "pdfjs-dist": "3.11.174"
+  }
+}

@@ -1,0 +1,113 @@
+# Compile Coach USCM pour Android et iOS à chaque envoi sur la branche main (ou à la demande, onglet Actions).
+# Android : APK de test toujours produit ; APK et AAB signés si les secrets ANDROID_* sont renseignés.
+# iOS : vérification de compilation toujours faite ; envoi sur TestFlight si les secrets APPLE_* sont renseignés.
+name: Compiler les applis
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  VERSION_NAME: 1.0.${{ github.run_number }}
+  VERSION_CODE: ${{ github.run_number }}
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    env:
+      KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Installer et préparer l'appli web
+        run: |
+          npm ci
+          npm run build:web
+          npx cap sync android
+      - name: Clé de signature
+        if: env.KS_B64 != ''
+        run: |
+          echo "$KS_B64" | base64 --decode > "$RUNNER_TEMP/uscm-release.jks"
+          echo "USCM_KEYSTORE_PATH=$RUNNER_TEMP/uscm-release.jks" >> "$GITHUB_ENV"
+      - name: Compiler
+        working-directory: android
+        env:
+          USCM_VERSION_CODE: ${{ env.VERSION_CODE }}
+          USCM_VERSION_NAME: ${{ env.VERSION_NAME }}
+          USCM_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          USCM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          USCM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ -n "$USCM_KEYSTORE_PATH" ]; then
+            ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+          else
+            ./gradlew --no-daemon assembleDebug
+          fi
+      - name: APK de test (installation directe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoachUSCM-${{ env.VERSION_NAME }}-android-test
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: APK et AAB signés (Google Play)
+        if: env.KS_B64 != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoachUSCM-${{ env.VERSION_NAME }}-android-publication
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+
+  ios:
+    name: iOS
+    runs-on: macos-15
+    env:
+      ASC_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+      ASC_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Installer et préparer l'appli web
+        run: |
+          npm ci
+          npm run build:web
+          npx cap sync ios
+      - name: Vérifier la compilation (simulateur, sans signature)
+        if: env.ASC_KEY_P8 == ''
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -20
+      - name: Archiver, signer et envoyer sur TestFlight
+        if: env.ASC_KEY_P8 != ''
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY_PATH"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          sed "s/__TEAM_ID__/${TEAM_ID}/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/CoachUSCM.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION="$VERSION_NAME" CURRENT_PROJECT_VERSION="$VERSION_CODE" \
+            "${AUTH[@]}" archive | tail -20
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/CoachUSCM.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            "${AUTH[@]}" | tail -20
