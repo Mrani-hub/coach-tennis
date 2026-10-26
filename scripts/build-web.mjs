@@ -20,8 +20,18 @@ const libs = {
   'jspdf.umd.min.js': 'jspdf/dist/jspdf.umd.min.js',
   'jspdf.plugin.autotable.min.js': 'jspdf-autotable/dist/jspdf.plugin.autotable.min.js',
   'pdf.min.js': 'pdfjs-dist/build/pdf.min.js',
-  'pdf.worker.min.js': 'pdfjs-dist/build/pdf.worker.min.js'
+  'pdf.worker.min.js': 'pdfjs-dist/build/pdf.worker.min.js',
+  'qrcode.js': 'qrcode-generator/qrcode.js'
 };
+
+/* Réglages Google (uscm.config.json) — l'adresse de la version iPhone est déduite du dépôt GitHub si elle est vide */
+const cfg = JSON.parse(readFileSync(join(root, 'uscm.config.json'), 'utf8'));
+if (!cfg.playerUrl && process.env.GITHUB_REPOSITORY) {
+  const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+  cfg.playerUrl = `https://${owner.toLowerCase()}.github.io/${repo}/`;
+}
+const cfgJs = `<script>window.USCM_CONFIG=${JSON.stringify({ googleClientId: cfg.googleClientId || '', googleApiKey: cfg.googleApiKey || '', playerUrl: cfg.playerUrl || '' })};</script>`;
+if (!cfg.googleClientId || !cfg.googleApiKey) console.warn('⚠ uscm.config.json : identifiants Google vides — le partage avec les joueurs sera désactivé.');
 for (const [dst, src] of Object.entries(libs)) copyFileSync(nm(src), join(www, 'lib', dst));
 
 /* 2. Polices (latin + latin étendu seulement) */
@@ -49,6 +59,7 @@ const must = (re, what) => { if (!re.test(html)) throw new Error(`build-web : mo
 must(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^>]*>/, 'polices Google');
 must(/cdnjs\.cloudflare\.com\/ajax\/libs\/jspdf\//, 'jsPDF');
 must(/const PDFJS_V='[^']*';/, 'pdf.js');
+must(/cdn\.jsdelivr\.net\/npm\/qrcode-generator@[^/]+\/qrcode\.js/, 'QR code');
 html = html
   .replace(/<meta name="claude:viewport-fit-sides"[^>]*>\s*/, '')
   .replace(/<link rel="preconnect"[^>]*>\s*/, '')
@@ -56,9 +67,10 @@ html = html
   .replace(/https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/jspdf\/[^/]+\/jspdf\.umd\.min\.js/, 'lib/jspdf.umd.min.js')
   .replace(/https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/jspdf-autotable\/[^/]+\/jspdf\.plugin\.autotable\.min\.js/, 'lib/jspdf.plugin.autotable.min.js')
   .replace(/const PDFJS_V='[^']*';/, "const PDFJS_V='lib/';")
+  .replace(/https:\/\/cdn\.jsdelivr\.net\/npm\/qrcode-generator@[^/]+\/qrcode\.js/, 'lib/qrcode.js')
   // Encoches et barres système : variables injectées par Capacitor (Android), env() en secours (iOS)
   .replace(/env\(safe-area-inset-(top|bottom|left|right),\s*0px\)/g, (_, s) => `var(--safe-area-inset-${s}, env(safe-area-inset-${s}, 0px))`)
-  .replace('<script src="lib/jspdf.umd.min.js">', (PWA ? '' : '<script src="native.js"></script>\n') + '<script src="lib/jspdf.umd.min.js">');
+  .replace('<script src="lib/jspdf.umd.min.js">', cfgJs + '\n' + (PWA ? '' : '<script src="native.js"></script>\n') + '<script src="lib/jspdf.umd.min.js">');
 
 const cut = html.indexOf('</style>') + '</style>'.length;
 let head = html.slice(0, cut), body = html.slice(cut);

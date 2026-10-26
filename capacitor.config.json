@@ -29,6 +29,9 @@
     "LocalNotifications": {
       "smallIcon": "ic_stat_uscm",
       "iconColor": "#1d5c45"
+    },
+    "SocialLogin": {
+      "logLevel": 1
     }
   }
 }

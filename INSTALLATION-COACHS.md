@@ -21,8 +21,10 @@ Voici l'application **Coach USCM** pour planifier et suivre les entraînements d
 3. Ouvrez Coach USCM depuis l'icône de l'écran d'accueil. L'appli fonctionne ensuite sans connexion.
 
 **Pour bien démarrer**
-- L'appli s'ouvre avec des données d'exemple. Quand vous êtes prêt : **Réglages → Vider toutes les données**, puis indiquez votre prénom, vos disponibilités et ajoutez vos joueurs.
-- Pensez à faire de temps en temps **Réglages → Exporter un fichier de sauvegarde**. Ce fichier sert aussi à passer vos données sur un nouveau téléphone.
+- Au premier lancement, choisissez **Je suis coach**. L'appli s'ouvre avec des données d'exemple. Quand vous êtes prêt : **Réglages → Vider toutes les données**, puis indiquez votre prénom, vos disponibilités et ajoutez vos joueurs.
+- **Espace joueur** : dans la fiche d'un joueur, « Activer l'espace joueur » vous donne un lien à lui envoyer. Il verra ses séances, ses cours collectifs, ses niveaux, vos comptes rendus et ses matchs. Il faut vous connecter une fois avec votre compte Google : les fichiers, chiffrés, sont rangés sur votre propre Google Drive.
+- Si un jeune utilise aussi votre téléphone ou tablette : **Réglages → Protection de l'espace coach** pour mettre un code.
+- Pensez à faire de temps en temps **Réglages → Exporter un fichier de sauvegarde** (ou publiez sur Google Drive, qui garde aussi une sauvegarde). Ce fichier sert aussi à passer vos données sur un nouveau téléphone.
 
 **Mises à jour**
 - Android : installez simplement le nouveau fichier reçu, vos données sont conservées.

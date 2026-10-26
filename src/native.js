@@ -6,6 +6,7 @@ import { Share } from '@capacitor/share';
 import { App } from '@capacitor/app';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 
 const KEY = 'uscm-coach-v1';
 const toB64 = async data => {
@@ -16,7 +17,7 @@ const toB64 = async data => {
 };
 const hashId = str => { let h = 0; for (const c of String(str)) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h) % 2000000000 + 1; };
 
-let persistTimer = null, pending = null;
+let persistTimer = null, pending = null, googleInit = false;
 const Native = {
   platform: Capacitor.getPlatform(),
   async restore() { try { const r = await Preferences.get({ key: KEY }); return r.value || null; } catch (e) { return null; } },
@@ -59,7 +60,20 @@ const Native = {
       await SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light, bar: SystemBarType.NavigationBar });
     } catch (e) {}
   },
-  hideSplash() { SplashScreen.hide().catch(() => {}); }
+  hideSplash() { SplashScreen.hide().catch(() => {}); },
+
+  /* Petites valeurs durables (mode coach/joueur, programmes suivis par un joueur) */
+  async kvGet(key) { try { return (await Preferences.get({ key })).value; } catch (e) { return null; } },
+  kvSet(key, value) { Preferences.set({ key, value }).catch(() => {}); },
+
+  /* Connexion Google native (Android) : jeton d'accès Google Drive limité aux fichiers de l'appli */
+  async googleLogin(webClientId, scopes) {
+    if (!googleInit) { await SocialLogin.initialize({ google: { webClientId, mode: 'online' } }); googleInit = true; }
+    const res = await SocialLogin.login({ provider: 'google', options: { scopes, forceRefreshToken: true } });
+    const tok = res && res.result && res.result.accessToken && res.result.accessToken.token;
+    if (!tok) throw new Error('Google n’a pas accordé l’accès à Drive. Réessayez et acceptez l’accès aux fichiers.');
+    return tok;
+  }
 };
 
 if (Capacitor.isNativePlatform()) {

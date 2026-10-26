@@ -1,0 +1,6 @@
+{
+  "_aide": "Identifiants Google du partage avec les joueurs : voir README, partie « Espace joueurs ». Ces valeurs ne sont pas secrètes. playerUrl vide = adresse GitHub Pages du dépôt.",
+  "googleClientId": "",
+  "googleApiKey": "",
+  "playerUrl": ""
+}

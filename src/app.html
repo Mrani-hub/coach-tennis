@@ -59,6 +59,7 @@ h3{font-family:var(--f-display);font-weight:600;font-size:18px;letter-spacing:.0
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600}
 .btn:hover{border-color:var(--court)}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .btn.pri{background:var(--court);color:var(--court-ink);border-color:var(--court)}
 .btn.clay{background:var(--clay);color:#fff;border-color:var(--clay)}
 .btn.danger{color:var(--danger);border-color:var(--danger)}
@@ -230,6 +231,27 @@ h3{font-family:var(--f-display);font-weight:600;font-size:18px;letter-spacing:.0
 .mlist{margin:6px 0 0;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:4px}
 .mstat{display:grid;grid-template-columns:minmax(0,1fr) 96px minmax(84px,auto);gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
 .mstat>:last-child{justify-self:end;text-align:right}
+.share{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:520px){.share{grid-template-columns:1fr}.share .qr{max-width:200px}}
+.qr{background:#fff;border-radius:10px;padding:6px;border:1px solid var(--line);line-height:0}
+.qr svg{width:100%;height:auto;display:block}
+.qr svg rect[fill="#ffffff"],.qr svg rect[fill="white"]{fill:#fff}
+.welcome{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding-block:40px 24px}
+.ball.big{width:64px;height:64px;border-radius:50%;background:var(--ball);position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.ball.big::before,.ball.big::after{content:"";position:absolute;width:64px;height:64px;border:4px solid #fff;border-radius:50%;top:-4px}
+.ball.big::before{left:-44px}.ball.big::after{right:-44px}
+.choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;max-width:560px;margin-top:8px}
+@media (max-width:480px){.choice{grid-template-columns:1fr}}
+.choix{display:flex;flex-direction:column;gap:6px;text-align:left;padding:18px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface);cursor:pointer}
+.choix b{font-family:var(--f-display);font-size:22px;letter-spacing:.02em;color:var(--court)}
+.choix span{color:var(--muted);font-size:14px}
+.choix:hover,.choix:focus-visible{border-color:var(--court)}
+.jnext{border-color:var(--court);background:var(--court-soft);display:flex;flex-direction:column;gap:8px}
+.jdate{font-family:var(--f-display);font-weight:700;font-size:20px;color:var(--court)}
+.jday{display:flex;flex-direction:column;gap:6px}
+.jday-h{font-size:14px;color:var(--muted);padding-top:4px}
+.jth{display:flex;gap:4px;flex-wrap:wrap}
+.ev.jbig .t-name{font-size:17px}
 .recap{font-size:14px;padding:8px 10px;border-left:3px solid var(--court);background:var(--surface-2);border-radius:0 6px 6px 0}
 .bar .tr{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
 .bar .tr i{display:block;height:100%;background:var(--court)}
@@ -284,6 +306,7 @@ textarea{min-height:70px;resize:vertical}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 /* ============ Données & utilitaires ============ */
 const KEY='uscm-coach-v1';
@@ -320,7 +343,7 @@ function migrate(o){o.seances=o.seances||[];o.joueurs=o.joueurs||[];
   o.themesCoach=o.themesCoach||THEMES.slice();o.joueurs.forEach(p=>{p.externes=p.externes||{}});
   o.pays=o.pays||'Maroc';o.instanceSigle=o.instanceSigle||'FRMT';o.instanceNom=o.instanceNom||'Fédération Royale Marocaine de Tennis';
   o.joueurs.forEach(p=>{if(!p.classements)p.classements=p.classement?[{date:today(),valeur:p.classement,points:'',note:''}]:[]});
-  o.matchs=o.matchs||[];return o}
+  o.matchs=o.matchs||[];o.drive=o.drive||{};return o}
 const lastClassement=p=>(p.classements||[]).slice().sort((a,b)=>b.date.localeCompare(a.date))[0];
 const instTxt=()=>S.instanceSigle||S.instanceNom||'officiel';
 function clHtml(p){const L=(p.classements||[]).map((c,i)=>({...c,i})).sort((a,b)=>b.date.localeCompare(a.date));
@@ -435,12 +458,13 @@ function seed(){
 }
 let fromLocal=false;
 function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.joueurs){fromLocal=true;return migrate(o)}}}catch(e){}return seed()}
-function save(){const j=JSON.stringify(S);try{localStorage.setItem(KEY,j)}catch(e){}
+function save(noDirty){if(!noDirty&&typeof marquerModifie==='function')marquerModifie();const j=JSON.stringify(S);try{localStorage.setItem(KEY,j)}catch(e){}
   if(window.Native){Native.persist(j);planRappels()}}
 let S=load();
 /* ---- Appli mobile : rappels de séances (notifications locales) ---- */
 let rappelTimer=null;
 function planRappels(){if(!window.Native)return;clearTimeout(rappelTimer);rappelTimer=setTimeout(async()=>{
+  if(APPMODE==='joueur'){await Native.schedule(itemsRappelsJ());return}
   const r=S.rappels||{};if(!r.on){Native.schedule([]);return}
   const now=Date.now(),items=[],t=today();
   for(let i=0;i<30&&items.length<60;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.off)return;
@@ -505,11 +529,25 @@ const ICONS={
  reglages:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'
 };
 const TABS=[['jour','Aujourd’hui'],['planning','Planning'],['joueurs','Joueurs'],['ecoles','Écoles'],['reglages','Réglages']];
+const TABS_J=[['jprog','Programme'],['jprogres','Progrès'],['jmatchs','Matchs'],['jreg','Réglages']];
+Object.assign(ICONS,{jprog:ICONS.planning,jprogres:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  jmatchs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"/></svg>',jreg:ICONS.reglages});
 function renderTabs(){
-  document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab" type="button" data-tab="${k}" ${UI.tab===k?'aria-current="page"':''}>${ICONS[k]}<span>${l}</span></button>`).join('');
+  const nav=document.querySelector('nav.tabs');nav.hidden=!APPMODE;
+  document.getElementById('tabs').style.gridTemplateColumns=`repeat(${(APPMODE==='joueur'?TABS_J:TABS).length},1fr)`;
+  document.getElementById('tabs').innerHTML=(APPMODE==='joueur'?TABS_J:TABS).map(([k,l])=>`<button class="tab" type="button" data-tab="${k}" ${UI.tab===k?'aria-current="page"':''}>${ICONS[k]}<span>${l}</span></button>`).join('');
 }
 function go(tab){UI.tab=tab;try{sessionStorage.setItem('uscm-tab',tab)}catch(e){}render();window.scrollTo(0,0)}
 function render(){
+  const qa=document.getElementById('quickAdd');
+  if(!APPMODE){document.getElementById('hTitle').textContent='Coach USCM';document.getElementById('hSub').textContent='Entraînements tennis jeunes';qa.hidden=true;renderTabs();document.getElementById('app').innerHTML=vAccueil();return}
+  if(APPMODE==='joueur'){const {sel,list}=srcSel();
+    document.getElementById('hTitle').textContent=sel||'Espace joueur';
+    document.getElementById('hSub').textContent=sel?`Espace joueur · ${list[0].data.coach.club||''}`:'Coach USCM';
+    qa.hidden=!PJ.sources.length;qa.disabled=false;qa.textContent='Actualiser';
+    if(!TABS_J.some(x=>x[0]===UI.tab))UI.tab='jprog';renderTabs();
+    document.getElementById('app').innerHTML=({jprog:vJProg,jprogres:vJProgres,jmatchs:vJMatchs,jreg:vJReglages}[UI.tab]||vJProg)();return}
+  qa.hidden=false;qa.textContent='+ Séance';if(TABS_J.some(x=>x[0]===UI.tab))UI.tab='jour';
   document.getElementById('hTitle').textContent=`Coach ${S.coach||''}`.trim();
   document.getElementById('hSub').textContent=`${S.club||'Club'} · entraînements jeunes`;
   renderTabs();
@@ -533,7 +571,7 @@ function vJour(){
   const nxt=[1,2,3].map(i=>addDays(t,i)).map(d=>({d,ev:eventsOn(d).filter(e=>!e.off)}));
   const lim=addDays(t,-14);
   const sans=S.joueurs.filter(p=>!S.seances.some(s=>s.joueurId===p.id&&s.date>=lim&&s.statut!=='annulee'));
-  return `${S.demo?'<div class="demo">Données d’exemple — remplacez-les depuis Réglages quand vous êtes prêt.</div>':''}
+  return `${bandeauPublier()}${S.demo?'<div class="demo">Données d’exemple — remplacez-les depuis Réglages quand vous êtes prêt.</div>':''}
   <div class="row between"><div><h3>${fmtDate(t)}</h3><h2>Programme du jour</h2></div></div>
   <div class="kpis num">
     <div class="kpi"><b>${fmtH(st.ind)}</b><span>individuel cette semaine</span></div>
@@ -655,6 +693,7 @@ function vReglages(){
     <div class="row"><label class="dday"><input type="checkbox" id="rOn" ${(S.rappels||{}).on?'checked':''}><b>Activer les rappels</b></label>
       <label class="fl" style="flex-direction:row;align-items:center;gap:8px">Prévenir<select id="rAv">${opts([[15,'15 min'],[30,'30 min'],[60,'1 h'],[120,'2 h']],(S.rappels||{}).avant||30)}</select>avant</label></div>
     <span id="rMsg" class="small muted"></span></div>`:''}
+  ${partageReglagesHtml()}
   <div class="panel list"><h3>Sauvegarde</h3>
     <p class="small muted" style="margin:0">Les données restent sur cet appareil. Exportez un fichier de sauvegarde pour les conserver ou les transférer sur un autre téléphone, puis importez-le pour les restaurer. Le copier-coller fonctionne aussi.</p>
     <div class="row"><button class="btn pri" type="button" id="fileBk">Exporter un fichier de sauvegarde</button><button class="btn" type="button" id="loadBk">Importer un fichier</button><button class="btn" type="button" id="copyBk">Copier la sauvegarde</button></div>
@@ -669,10 +708,10 @@ function vReglages(){
 
 /* ============ Feuilles (modales) ============ */
 let sheetEl=null;
-function openSheet(html){closeSheet();sheetEl=document.createElement('div');sheetEl.className='ov';sheetEl.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+function openSheet(html){closeSheet();UI.openPid=null;sheetEl=document.createElement('div');sheetEl.className='ov';sheetEl.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
   sheetEl.addEventListener('click',e=>{if(e.target===sheetEl)closeSheet()});document.body.appendChild(sheetEl);
   const f=sheetEl.querySelector('input,select,textarea,button');if(f&&matchMedia('(min-width:700px)').matches)f.focus();}
-function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null}}
+function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null}UI.openPid=null}
 const $=id=>document.getElementById(id);
 const opts=(arr,sel)=>arr.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(v)===String(sel)?'selected':''}>${esc(l)}</option>`}).join('');
 const head=t=>`<div class="sheet-h"><h2>${t}</h2><button class="btn ghost" type="button" data-close aria-label="Fermer">✕</button></div>`;
@@ -906,6 +945,7 @@ function openJoueur(id){
   <div class="kpis num" style="grid-template-columns:repeat(4,minmax(0,1fr))">
     <div class="kpi"><b>${faites.length}</b><span>faites</span></div><div class="kpi"><b>${fmtH(faites.reduce((a,s)=>a+(+s.duree),0))}</b><span>en individuel</span></div>
     <div class="kpi"><b>${abs}</b><span>absence${abs>1?'s':''}</span></div><div class="kpi"><b>${tot?Math.round(pr/tot*100)+'%':'—'}</b><span>présence collectif</span></div></div>
+  ${espaceJoueurHtml(p)}
   ${ficheHtml(p,[],true)}
   <div>${matchSection(p)}</div>
   ${extHtml(p)}
@@ -918,7 +958,7 @@ function openJoueur(id){
   <div><h3 style="margin-bottom:8px">À venir</h3>${avenir.length?`<div class="list">${avenir.map(s=>`<button type="button" class="btn" style="text-align:left" data-sid="${s.id}">${fmtDate(s.date)} · ${s.debut} · ${esc(thTxt(s))}</button>`).join('')}</div>`:'<div class="muted small">Aucune séance prévue.</div>'}</div>
   <div><h3 style="margin-bottom:8px">Historique</h3>${ss.filter(s=>s.date<t).length?`<div class="list">${ss.filter(s=>s.date<t).slice(0,10).map(s=>`<button type="button" class="btn" style="text-align:left;font-weight:400" data-sid="${s.id}"><b>${fmtShort(s.date)}</b> · ${esc(thTxt(s))} <span class="chip st-${s.statut}">${STATUTS[s.statut]}</span>${s.notes?`<br><span class="small muted">${esc(s.notes)}</span>`:''}</button>`).join('')}</div>`:'<div class="muted small">Pas encore de séance passée.</div>'}</div>
   <div class="row"><button class="btn pri" type="button" data-plan="${p.id}">Planifier une séance</button><button class="btn" type="button" id="pEdit">Modifier</button><span style="flex:1"></span><button class="btn danger" type="button" id="pDel">Supprimer</button></div>`);
-  $('pEdit').onclick=()=>formJoueur(p);
+  UI.openPid=id;$('pEdit').onclick=()=>formJoueur(p);
   $('pDel').onclick=function(){if(this.dataset.armed){S.joueurs=S.joueurs.filter(x=>x.id!==id);S.seances=S.seances.filter(s=>s.joueurId!==id);S.matchs=(S.matchs||[]).filter(x=>x.joueurId!==id);S.groupes.forEach(g=>g.joueurIds=g.joueurIds.filter(x=>x!==id));save();closeSheet();render();toast('Joueur supprimé')}
     else{this.dataset.armed=1;this.textContent=`Supprimer aussi ses ${ss.length} séances ?`;this.classList.add('solid')}};
 }
@@ -1355,10 +1395,298 @@ async function exportPdf(pid,btn){
   btn.disabled=false;btn.textContent=lbl;
 }
 
+/* ============ Sessions coach / joueur et partage par Google Drive ============ */
+const CFG=window.USCM_CONFIG||{};
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
+const DAPI='https://www.googleapis.com/drive/v3',DUP='https://www.googleapis.com/upload/drive/v3';
+const MODE_KEY='uscm-mode',PJ_KEY='uscm-joueur-v1';
+let APPMODE=null;try{APPMODE=localStorage.getItem(MODE_KEY)}catch(e){}
+function setMode(m){APPMODE=m;try{localStorage.setItem(MODE_KEY,m)}catch(e){}if(window.Native&&Native.kvSet)Native.kvSet(MODE_KEY,m);
+  UI.tab=m==='joueur'?'jprog':'jour';try{sessionStorage.setItem('uscm-tab',UI.tab)}catch(e){}render();window.scrollTo(0,0)}
+const driveReady=()=>!!(CFG.googleClientId&&CFG.googleApiKey&&window.crypto&&crypto.subtle);
+
+/* ---- Chiffrement (AES-GCM 256 bits, clé propre à chaque joueur) ---- */
+function b64u(bytes){let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function ub64u(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+const newKey=()=>b64u(crypto.getRandomValues(new Uint8Array(32)));
+async function chiffrer(keyB64,obj){const k=await crypto.subtle.importKey('raw',ub64u(keyB64),'AES-GCM',false,['encrypt']);const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(obj))));
+  return JSON.stringify({app:'coach-uscm',type:'joueur-chiffre',v:1,iv:b64u(iv),ct:b64u(ct)})}
+async function dechiffrer(keyB64,txt){const o=JSON.parse(txt);if(!o||o.app!=='coach-uscm'||!o.ct)throw new Error('format');
+  const k=await crypto.subtle.importKey('raw',ub64u(keyB64),'AES-GCM',false,['decrypt']);
+  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub64u(o.iv)},k,ub64u(o.ct))))}
+async function sha256(s){const h=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));return [...h].map(x=>x.toString(16).padStart(2,'0')).join('')}
+
+/* ---- Connexion Google (jeton d'accès limité aux fichiers créés par l'appli) ---- */
+let gTok=null,gClient=null,gWait=null;
+function prechargerGoogle(){if(!driveReady()||window.Native||window.google&&google.accounts)return;loadScript('https://accounts.google.com/gsi/client','google').catch(()=>{})}
+function googleToken(interactive){
+  if(gTok&&gTok.exp>Date.now()+60000)return Promise.resolve(gTok.token);
+  if(!interactive)return Promise.reject(Object.assign(new Error('Connexion Google nécessaire'),{code:'login'}));
+  if(!driveReady())return Promise.reject(new Error('Le partage Google Drive n’est pas configuré dans cette version de l’appli.'));
+  if(window.Native&&Native.googleLogin)return Native.googleLogin(CFG.googleClientId,[DRIVE_SCOPE]).then(t=>{gTok={token:t,exp:Date.now()+50*60000};return t});
+  const ask=()=>new Promise((ok,ko)=>{
+    if(!gClient)gClient=google.accounts.oauth2.initTokenClient({client_id:CFG.googleClientId,scope:DRIVE_SCOPE,callback:()=>{},error_callback:()=>{}});
+    gClient.callback=r=>{if(r&&r.access_token){gTok={token:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000};ok(r.access_token)}else ko(new Error(r&&r.error_description||'Connexion Google refusée'))};
+    gClient.error_callback=e=>ko(new Error(e&&e.type==='popup_closed'?'Connexion annulée':'Fenêtre de connexion Google bloquée : autorisez les fenêtres pour ce site.'));
+    gClient.requestAccessToken({prompt:''})});
+  if(window.google&&google.accounts)return ask();
+  return loadScript('https://accounts.google.com/gsi/client','google').then(ask,()=>{throw new Error('Google est injoignable : vérifiez la connexion.')});
+}
+async function gfetch(url,opt={},interactive){
+  const tok=await googleToken(interactive);
+  const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+tok}});
+  if(r.status===401){gTok=null;throw Object.assign(new Error('Session Google expirée : reconnectez-vous.'),{code:'login'})}
+  if(!r.ok){const e=new Error(`Google Drive a répondu ${r.status}`);e.status=r.status;throw e}
+  return r.status===204?null:r.json()}
+async function driveCreate(meta,content,mime,interactive){
+  const b='uscm'+Math.random().toString(36).slice(2);
+  const body=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${b}--`;
+  return gfetch(`${DUP}/files?uploadType=multipart&fields=id`,{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${b}`},body},interactive)}
+async function driveUpdate(id,content,mime,interactive){return gfetch(`${DUP}/files/${id}?uploadType=media&fields=id`,{method:'PATCH',headers:{'Content-Type':mime},body:content},interactive)}
+async function driveSave(id,name,content,mime,parent,interactive){
+  if(id){try{return (await driveUpdate(id,content,mime,interactive)).id}catch(e){if(e.status!==404&&e.status!==403)throw e}}
+  return (await driveCreate({name,mimeType:mime,parents:parent?[parent]:undefined},content,mime,interactive)).id}
+async function driveFolder(interactive){
+  const D=S.drive=S.drive||{};
+  if(D.folderId){try{const f=await gfetch(`${DAPI}/files/${D.folderId}?fields=id,trashed`,{},interactive);if(!f.trashed)return D.folderId}catch(e){if(e.code==='login')throw e}}
+  D.folderId=(await gfetch(`${DAPI}/files?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:`Coach USCM – ${S.coach||'coach'}`,mimeType:'application/vnd.google-apps.folder'})},interactive)).id;
+  return D.folderId}
+
+/* ---- Contenu publié pour un joueur ---- */
+function payloadJoueur(p){
+  const t=today(),gs=S.groupes.filter(g=>g.joueurIds.includes(p.id)),cours=[];
+  for(let i=-21;i<=63;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.type!=='col'||!e.ref.joueurIds.includes(p.id))return;
+    const ec=S.ecoles.find(x=>x.id===e.ref.ecoleId)||{},pr=S.presences[e.key];
+    cours.push({date:d,debut:e.debut,fin:e.fin,court:e.court,groupe:e.ref.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:e.ref.niveau||'',
+      annule:!!e.off,motif:e.conge?'Congé du coach':e.off?'Cours annulé':'',present:pr?pr.includes(p.id):null})})}
+  const {m,tot,n}=tauxThemes(p.id);
+  return {app:'coach-uscm',type:'joueur',v:1,publie:new Date().toISOString(),
+    coach:{nom:S.coach||'',club:S.club||'',instance:instTxt()},
+    joueur:{id:p.id,prenom:p.prenom,nom:p.nom,categorie:categorie(p.naissance),niveau:p.niveau,objectifs:p.notes||'',classements:p.classements||[]},
+    themesCoach:CT(),niveaux:p.niveaux||{},evol:(p.evol||[]).slice(-30),externes:Object.fromEntries(THEMES.filter(x=>!isCT(x)).map(x=>[x,extLabel(p,x)])),
+    seances:S.seances.filter(s=>s.joueurId===p.id&&s.date>=addDays(t,-180)).map(s=>({date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
+    cours,groupes:gs.map(g=>{const ec=S.ecoles.find(x=>x.id===g.ecoleId)||{};return {nom:g.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:g.niveau||'',creneaux:g.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court}))}}),
+    conges:(S.conges||[]).filter(c=>c.fin>=t).map(c=>({debut:c.debut,fin:c.fin,motif:c.motif||''})),
+    matchs:matchesOf(p.id).slice(0,20).map(({joueurId,...x})=>x),taux:{m,tot,n}}}
+
+/* ---- Publication ---- */
+const partages=()=>S.joueurs.filter(p=>p.partage&&p.partage.actif);
+let publishing=false,autoTimer=null;
+function marquerModifie(){if(!S.drive)S.drive={};S.drive.dirty=true;
+  if(gTok&&gTok.exp>Date.now()+120000){clearTimeout(autoTimer);autoTimer=setTimeout(()=>publier(false,true),5000)}}
+async function publier(interactive=true,silencieux=false){
+  if(publishing)return;const L=partages();
+  if(!driveReady()){toast('Le partage Google Drive n’est pas configuré dans cette version.');return}
+  publishing=true;const btns=document.querySelectorAll('[data-publish]');btns.forEach(b=>{b.disabled=true;b.dataset.l=b.textContent;b.textContent='Publication…'});
+  try{
+    const folder=await driveFolder(interactive);let n=0;
+    for(const p of L){const P=p.partage;if(!P.key)P.key=newKey();
+      const txt=await chiffrer(P.key,payloadJoueur(p)),neuf=!P.fileId;
+      P.fileId=await driveSave(P.fileId,`CoachUSCM-joueur-${p.id}.uscm`,txt,'application/json',folder,interactive);
+      if(neuf||!P.public){await gfetch(`${DAPI}/files/${P.fileId}/permissions?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})},interactive);P.public=true}
+      P.publie=new Date().toISOString();n++}
+    const D=S.drive;D.lastPublish=new Date().toISOString();D.dirty=false;
+    D.backupId=await driveSave(D.backupId,'CoachUSCM-sauvegarde.json',JSON.stringify(S),'application/json',folder,interactive);
+    save(true);
+    if(!silencieux)toast(n?`${n} programme${n>1?'s':''} publié${n>1?'s':''} sur Google Drive`:'Sauvegarde envoyée sur Google Drive');
+    if(UI.tab==='reglages'||UI.tab==='jour')render();
+    if(sheetEl&&UI.openPid){const pid=UI.openPid;closeSheet();openJoueur(pid)}
+  }catch(e){if(!silencieux)toast(e.message||'Publication impossible')}
+  finally{publishing=false;document.querySelectorAll('[data-publish]').forEach(b=>{b.disabled=false;if(b.dataset.l)b.textContent=b.dataset.l})}}
+async function restaurerDrive(){
+  try{const q=encodeURIComponent("name='CoachUSCM-sauvegarde.json' and trashed=false");
+    const r=await gfetch(`${DAPI}/files?q=${q}&orderBy=modifiedTime desc&pageSize=1&fields=files(id,modifiedTime)`,{},true);
+    if(!r.files||!r.files.length){toast('Aucune sauvegarde Coach USCM trouvée sur ce compte Google');return}
+    const tok=await googleToken(false),res=await fetch(`${DAPI}/files/${r.files[0].id}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
+    if(!res.ok)throw new Error('Lecture impossible');restoreFrom(await res.json());
+  }catch(e){toast(e.message||'Restauration impossible')}}
+async function revoquer(pid){const p=S.joueurs.find(x=>x.id===pid);if(!p||!p.partage)return;
+  const id=p.partage.fileId;p.partage=null;save();
+  if(id){try{await gfetch(`${DAPI}/files/${id}`,{method:'DELETE'},true)}catch(e){toast('Accès retiré. Le fichier sera supprimé de Drive à la prochaine connexion.');(S.drive.aSupprimer=S.drive.aSupprimer||[]).push(id);save(true)}}
+  closeSheet();openJoueur(pid);toast('Accès du joueur retiré')}
+const codeJoueur=p=>p.partage&&p.partage.fileId?`${p.partage.fileId}.${p.partage.key}`:'';
+const lienJoueur=p=>{const c=codeJoueur(p);return c&&CFG.playerUrl?`${CFG.playerUrl.replace(/#.*$/,'')}#j=${c}`:''};
+function qrSvg(txt){if(!window.qrcode)return '';try{const q=qrcode(0,'M');q.addData(txt);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return ''}}
+
+/* Section « Espace du joueur » dans la fiche joueur (coach) */
+function espaceJoueurHtml(p){
+  const P=p.partage;
+  if(!driveReady())return `<div><h3 style="margin-bottom:4px">Espace du joueur</h3><p class="small muted" style="margin:0">Le joueur peut suivre son programme sur son téléphone. Ce partage passe par votre Google Drive : il fonctionne dans l’appli Android et la version iPhone, une fois la connexion Google configurée (voir le guide).</p></div>`;
+  if(!P||!P.actif)return `<div><h3 style="margin-bottom:4px">Espace du joueur</h3><p class="small muted" style="margin:0 0 8px;max-width:65ch">Donnez à ${esc(p.prenom)} un accès à son programme (séances individuelles et cours collectifs), ses niveaux, vos comptes rendus et ses matchs. Les données sont chiffrées sur votre Google Drive : seul ce joueur peut les lire.</p>
+    <button class="btn pri" type="button" data-jshare="${p.id}">Activer l’espace joueur</button></div>`;
+  const lien=lienJoueur(p),code=codeJoueur(p),D=S.drive||{};
+  if(!code)return `<div><h3 style="margin-bottom:4px">Espace du joueur</h3><p class="small" style="margin:0 0 8px">Publiez une première fois pour créer le lien d’accès de ${esc(p.prenom)}.</p><button class="btn pri" type="button" data-publish>Publier sur Google Drive</button></div>`;
+  const msg=`Bonjour ${p.prenom}, voici ton programme d’entraînement Coach USCM : ${lien||code}`;
+  return `<div><h3 style="margin-bottom:4px">Espace du joueur</h3>
+    <div class="share">${lien?`<div class="qr" aria-label="QR code d’accès">${qrSvg(lien)}</div>`:''}
+    <div class="list" style="gap:6px;min-width:0">
+      <div class="small">Dernière publication : <b>${P.publie?fmtShort(P.publie.slice(0,10))+' à '+P.publie.slice(11,16):'—'}</b>${D.dirty?' · <span style="color:var(--warn);font-weight:700">modifications à publier</span>':''}</div>
+      ${lien?`<label class="fl">Lien à envoyer<input readonly id="jl-${p.id}" value="${esc(lien)}"></label>`:''}
+      <label class="fl">Code d’accès<input readonly id="jc-${p.id}" value="${esc(code)}"></label>
+      <div class="row"><button class="btn" type="button" data-jcopy="${p.id}">Copier ${lien?'le lien':'le code'}</button>
+        <a class="btn" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="btn" type="button" data-publish>Publier maintenant</button></div>
+      <p class="small muted" style="margin:0">Le joueur ouvre le lien (ou scanne le QR code), sans compte ni mot de passe. Gardez ce lien privé : il donne accès aux données du joueur.</p>
+      <div><button class="btn danger" type="button" data-jrevoke="${p.id}">Retirer l’accès</button></div></div></div></div>`;
+}
+/* Panneau Réglages (coach) */
+function partageReglagesHtml(){
+  const D=S.drive||{},n=partages().length;
+  const pinPanel=`<div class="panel list"><h3>Protection de l’espace coach</h3>
+    <p class="small muted" style="margin:0;max-width:65ch">Un code demandé pour revenir dans l’espace coach depuis l’espace joueur, si un jeune utilise ce téléphone ou cette tablette.</p>
+    <div class="row"><label class="fl" style="max-width:160px">${S.pin?'Nouveau code':'Code (4 à 8 chiffres)'}<input id="pinA" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8"></label>
+      <label class="fl" style="max-width:160px">Confirmer<input id="pinB" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8"></label></div>
+    <div class="row"><button class="btn pri" type="button" id="pinSave">${S.pin?'Changer le code':'Activer le code'}</button>${S.pin?'<button class="btn" type="button" id="pinDel">Supprimer le code</button>':''}<span id="pinMsg" class="small"></span></div>
+    <div class="row"><button class="btn" type="button" id="toJoueur">Ouvrir l’espace joueur sur cet appareil</button></div></div>`;
+  if(!driveReady())return `<div class="panel list"><h3>Espace joueurs et Google Drive</h3><p class="small muted" style="margin:0;max-width:65ch">Le partage du programme avec les joueurs et la sauvegarde sur Google Drive fonctionnent dans l’appli Android et la version iPhone, une fois la connexion Google configurée (voir le guide).</p></div>`+pinPanel;
+  const conn=gTok&&gTok.exp>Date.now();
+  return `<div class="panel list"><h3>Espace joueurs et Google Drive</h3>
+    <p class="small muted" style="margin:0;max-width:65ch">Vos joueurs voient leur programme grâce à des fichiers chiffrés déposés sur votre Google Drive, dans le dossier « Coach USCM ». Une sauvegarde complète de vos données y est aussi envoyée à chaque publication.</p>
+    <div class="small">${n} joueur${n>1?'s':''} avec un espace actif · Dernière publication : <b>${D.lastPublish?fmtShort(D.lastPublish.slice(0,10))+' à '+D.lastPublish.slice(11,16):'jamais'}</b>${D.dirty&&n?' · <span style="color:var(--warn);font-weight:700">modifications à publier</span>':''}</div>
+    <div class="small">${conn?'✓ Connecté à Google : vos modifications sont publiées automatiquement pendant 50 minutes.':'Non connecté à Google.'}</div>
+    <div class="row"><button class="btn pri" type="button" data-publish>Publier sur Google Drive</button><button class="btn" type="button" id="driveRestore">Restaurer depuis Google Drive</button></div></div>`+pinPanel;
+}
+/* Bandeau sur l'accueil du coach */
+function bandeauPublier(){const D=S.drive||{};if(!driveReady()||!D.dirty||!partages().length)return '';
+  return `<div class="demo row between" style="background:var(--court-soft);color:var(--court)"><span>Vos joueurs ne voient pas encore vos dernières modifications.</span><button class="btn pri" type="button" data-publish>Publier</button></div>`}
+
+/* ---- Passage d'une session à l'autre ---- */
+function versCoach(){
+  if(!S.pin)return setMode('coach');
+  openSheet(`${head('Espace coach')}<p class="small muted" style="margin:0">Saisissez le code de l’espace coach.</p>
+    <label class="fl">Code<input id="pinIn" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8"></label><div id="pinW"></div>
+    <div class="row"><button class="btn pri" type="button" id="pinOk">Entrer</button><button class="btn" type="button" data-close>Annuler</button></div>`);
+  const go2=async()=>{if(await sha256('uscm-pin:'+$('pinIn').value)===S.pin){closeSheet();setMode('coach')}else{$('pinW').innerHTML='<div class="warnbox">Code incorrect.</div>';$('pinIn').value=''}};
+  $('pinOk').onclick=go2;$('pinIn').addEventListener('keydown',e=>{if(e.key==='Enter')go2()});setTimeout(()=>$('pinIn').focus(),50)}
+
+function vAccueil(){
+  return `<div class="welcome"><span class="ball big" aria-hidden="true"></span>
+    <h2>Bienvenue sur Coach USCM</h2><p class="muted" style="margin:0;max-width:46ch">Planification et suivi des entraînements de tennis jeunes. Qui utilise l’appli sur cet appareil ?</p>
+    <div class="choice">
+      <button type="button" class="choix" id="pickCoach"><b>Je suis coach</b><span>Je planifie les séances et les cours, je suis mes joueurs.</span></button>
+      <button type="button" class="choix" id="pickJoueur"><b>Je suis joueur</b><span>Je consulte le programme préparé par mon coach.</span></button>
+    </div></div>`}
+
+/* ============ Espace joueur ============ */
+let PJ={sources:[],sel:'',rappels:{on:false,avant:60}};
+try{const r=localStorage.getItem(PJ_KEY);if(r)PJ=Object.assign(PJ,JSON.parse(r))}catch(e){}
+function saveJ(){const j=JSON.stringify(PJ);try{localStorage.setItem(PJ_KEY,j)}catch(e){}if(window.Native&&Native.kvSet)Native.kvSet(PJ_KEY,j);if(APPMODE==='joueur')planRappels()}
+function parseCode(txt){const s=String(txt||'').trim(),m=s.match(/#j=([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/)||s.match(/^([A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{30,})$/);return m?m[1]:null}
+async function chargerSource(src){
+  const [id,key]=src.code.split('.');
+  if(!CFG.googleApiKey)throw new Error('Cette version de l’appli n’est pas reliée à Google Drive.');
+  const r=await fetch(`${DAPI}/files/${encodeURIComponent(id)}?alt=media&key=${encodeURIComponent(CFG.googleApiKey)}`,{cache:'no-store'});
+  if(r.status===404||r.status===403)throw Object.assign(new Error('Accès retiré par le coach ou lien invalide.'),{gone:true});
+  if(!r.ok)throw new Error(`Google Drive a répondu ${r.status}`);
+  let d;try{d=await dechiffrer(key,await r.text())}catch(e){throw new Error('Code d’accès incorrect.')}
+  src.data=d;src.fetched=new Date().toISOString();src.err='';return d}
+let jLoading=false;
+async function actualiserJ(silent){if(jLoading||!PJ.sources.length)return;jLoading=true;const b=$('quickAdd');if(b){b.disabled=true;b.textContent='…'}
+  let ok=0,ko=0;
+  for(const s of PJ.sources){try{await chargerSource(s);ok++}catch(e){s.err=e.message;ko++}}
+  jLoading=false;saveJ();render();if(!silent)toast(ko&&!ok?(navigator.onLine===false?'Hors connexion : dernier programme reçu affiché':'Mise à jour impossible'):ko?'Programme mis à jour en partie':'Programme à jour')}
+async function ajouterCode(txt,quiet){const c=parseCode(txt);if(!c){if(!quiet)toast('Ce lien ou ce code n’est pas reconnu');return false}
+  if(PJ.sources.some(s=>s.code===c)){if(!quiet)toast('Ce programme est déjà suivi');return true}
+  const s={code:c};try{await chargerSource(s)}catch(e){if(!quiet)toast(e.message);if(navigator.onLine!==false)return false;s.err='Hors connexion : le programme se chargera dès le retour du réseau.'}
+  PJ.sources.push(s);if(s.data)PJ.sel=nomJ(s.data);saveJ();if(!quiet)toast(s.data?`Programme de ${s.data.joueur.prenom} ajouté`:'Code enregistré');return true}
+const nomJ=d=>`${d.joueur.prenom} ${d.joueur.nom}`;
+function srcSel(){const ok=PJ.sources.filter(s=>s.data),noms=[...new Set(ok.map(s=>nomJ(s.data)))];
+  const sel=noms.includes(PJ.sel)?PJ.sel:noms[0]||'';return {noms,sel,list:ok.filter(s=>nomJ(s.data)===sel)}}
+function agendaJ(list,from,to){const it=[];
+  list.forEach(s=>{const d=s.data,c=d.coach.nom?`Coach ${d.coach.nom}`:'Coach';
+    d.seances.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'ind',date:x.date,debut:x.debut,fin:fromMin(toMin(x.debut)+x.duree),duree:x.duree,court:x.court,themes:x.themes,statut:x.statut,notes:x.notes,coach:c})});
+    d.cours.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'col',...x,coach:c})})});
+  return it.sort((a,b)=>(a.date+a.debut).localeCompare(b.date+b.debut))}
+function jEv(e,big){
+  const sub=e.type==='ind'?`<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(e.coach)}`:`<span class="chip col">Collectif</span>${esc(e.ecole||'')}${e.lieu?' · '+esc(e.lieu):''} · ${esc(e.court)}`;
+  const off=e.type==='col'?e.annule:e.statut==='annulee';
+  const th=e.type==='ind'?`<span class="jth">${e.themes.map(x=>`<span class="chip">${esc(x.t)}${e.themes.length>1?' '+x.w+' %':''}</span>`).join('')}</span>`:(e.niveau?`<span class="small muted">${esc(e.niveau)}</span>`:'');
+  return `<div class="ev ${e.type} ${off?'off':''} ${big?'jbig':''}" style="cursor:default"><span class="t-time num">${e.debut}<i>${e.fin}</i></span>
+    <span class="t-name">${esc(e.type==='ind'?'Séance individuelle':e.groupe)}${off?` <span class="chip st-annulee">${esc(e.motif||'Annulé')}</span>`:''}</span>
+    <span class="t-sub">${sub}</span>${th?`<span></span><span class="t-sub">${th}</span>`:''}</div>`}
+function jHeader(){const {noms,sel,list}=srcSel();
+  return `${noms.length>1?`<div class="seg">${noms.map(n=>`<button type="button" data-jsel="${esc(n)}" aria-pressed="${n===sel}">${esc(n.split(' ')[0])}</button>`).join('')}</div>`:''}
+  ${list.length?`<div class="small muted">Programme publié par ${list.map(s=>`${esc(s.data.coach.nom?'Coach '+s.data.coach.nom:'le coach')} le ${fmtShort(s.data.publie.slice(0,10))}`).join(' · ')}${list.some(s=>s.err)?` · <span style="color:var(--warn)">${esc(list.find(s=>s.err).err)}</span>`:''}</div>`:''}`}
+function vJProg(){
+  const {list}=srcSel();if(!list.length)return vJVide();
+  const t=today(),ag=agendaJ(list,t,addDays(t,27)),nowH=new Date().toTimeString().slice(0,5);
+  const next=ag.find(e=>(e.date>t||e.fin>=nowH)&&!(e.type==='col'?e.annule:e.statut==='annulee'));
+  const cg=[].concat(...list.map(s=>s.data.conges.map(c=>({...c,coach:s.data.coach.nom})))).filter(c=>c.debut<=addDays(t,21));
+  const days={};ag.forEach(e=>(days[e.date]=days[e.date]||[]).push(e));
+  const gs=[].concat(...list.map(s=>s.data.groupes));
+  return `${jHeader()}
+  ${cg.map(c=>`<div class="demo">Coach ${esc(c.coach||'')} absent du ${fmtShort(c.debut)} au ${fmtShort(c.fin)}${c.motif?` (${esc(c.motif)})`:''} : pas d’entraînement avec lui sur cette période.</div>`).join('')}
+  ${next?`<section class="list"><h3>Prochain entraînement</h3><div class="panel jnext"><div class="jdate">${next.date===t?'Aujourd’hui':next.date===addDays(t,1)?'Demain':fmtDate(next.date)}</div>${jEv(next,true)}</div></section>`:''}
+  <section class="list"><h3>Les 4 prochaines semaines</h3>
+    ${Object.keys(days).length?Object.entries(days).map(([d,L])=>`<div class="jday"><div class="jday-h"><b>${d===t?'Aujourd’hui':fmtDate(d)}</b></div>${L.map(e=>jEv(e)).join('')}</div>`).join(''):'<div class="empty">Aucun entraînement prévu pour l’instant.</div>'}</section>
+  ${gs.length?`<section class="list"><h3>Mes cours collectifs</h3>${gs.map(g=>`<div class="panel"><b>${esc(g.nom)}</b> <span class="small muted">${esc(g.ecole)}${g.lieu?' · '+esc(g.lieu):''}${g.niveau?' · '+esc(g.niveau):''}</span><div class="slots">${g.creneaux.map(c=>`<span class="slot num">${JOURS[c.jour]} ${c.debut}–${fromMin(toMin(c.debut)+c.duree)} · ${esc(c.court)}</span>`).join('')}</div></div>`).join('')}</section>`:''}`}
+function vJProgres(){
+  const {list}=srcSel();if(!list.length)return vJVide();
+  return jHeader()+list.map(s=>{const d=s.data,ths=THEMES.filter(x=>d.niveaux[x]||d.themesCoach.includes(x));
+    const tx=d.taux||{m:{},tot:0},items=THEMES.map((x,i)=>({x,i,v:tx.m[x]||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v);
+    const cr=d.seances.filter(x=>x.date<=today()&&x.notes&&x.statut!=='annulee').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,15);
+    return `<section class="list"><h3>Mes niveaux${list.length>1?` · Coach ${esc(d.coach.nom)}`:''}</h3>
+      ${d.joueur.objectifs?`<div class="recap"><b>Objectifs :</b> ${esc(d.joueur.objectifs)}</div>`:''}
+      <div class="lvs">${ths.map(x=>{const v=d.niveaux[x]||0,ev=d.evol.filter(e=>e.t===x).slice(-1)[0];
+        return `<div class="lv"><span class="lv-t">${esc(x)}${d.externes[x]&&d.externes[x]!=='non suivi'?` <span class="chip ext">${esc(d.externes[x])}</span>`:''}</span><span class="sstars" style="font-size:18px" aria-label="${v} sur 5">${'★'.repeat(v)}<i>${'★'.repeat(5-v)}</i></span>
+        ${ev?`<span class="trend ${ev.to>ev.from?'up':'down'}">${ev.to>ev.from?'▲':'▼'} ${fmtShort(ev.d)}</span>`:'<span class="trend"></span>'}</div>`}).join('')}</div>
+      ${items.length?`<h3 style="margin-top:6px">Temps travaillé par thème</h3><div class="small muted">${tx.n} séance${tx.n>1?'s':''} faite${tx.n>1?'s':''} · ${fmtH(Math.round(tx.tot))}</div>
+        <div class="bars">${items.map(o=>`<div class="bar"><span>${esc(o.x)}</span><span class="tr"><i style="width:${o.v/tx.tot*100}%;background:var(--c${o.i+1})"></i></span><b class="num">${Math.round(o.v/tx.tot*100)}%</b></div>`).join('')}</div>`:''}
+      ${d.joueur.classements.length?`<h3 style="margin-top:6px">Classement ${esc(d.coach.instance||'')}</h3><div class="list" style="gap:4px">${d.joueur.classements.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(c=>`<div class="small num"><b>${fmtShort(c.date)} ${c.date.slice(0,4)}</b> · ${esc(c.valeur)}${c.points?` · ${esc(c.points)} pts`:''}</div>`).join('')}</div>`:''}
+      <h3 style="margin-top:6px">Comptes rendus du coach</h3>
+      ${cr.length?cr.map(x=>`<div class="recap"><b class="num">${fmtShort(x.date)}</b> · ${esc(x.themes.map(y=>y.t).join(', '))}<br>${esc(x.notes)}</div>`).join(''):'<div class="small muted">Pas encore de compte rendu.</div>'}</section>`}).join('')}
+function vJMatchs(){
+  const {list}=srcSel();if(!list.length)return vJVide();
+  const L=[].concat(...list.map(s=>s.data.matchs.map(m=>({...m,_c:s.data.coach.nom})))).sort((a,b)=>b.date.localeCompare(a.date));
+  if(!L.length)return jHeader()+'<div class="empty">Aucun match enregistré par ton coach.</div>';
+  const v=L.filter(m=>m.resultat==='V').length,R=themeMatchFrom(L);
+  const forts=Object.keys(R).filter(x=>R[x].status==='fort'),faibles=Object.keys(R).filter(x=>R[x].status==='faible'||R[x].status==='mixte');
+  UI.jm=L;
+  return `${jHeader()}<div class="small"><b>${L.length} match${L.length>1?'s':''}</b> · ${v} victoire${v>1?'s':''} · ${L.length-v} défaite${L.length-v>1?'s':''}</div>
+  <div class="mcols"><div class="panel"><h3 style="color:var(--ok)">Mes points forts</h3><div class="small">${forts.map(esc).join(', ')||'—'}</div></div>
+    <div class="panel"><h3 style="color:var(--danger)">À travailler</h3><div class="small">${faibles.map(esc).join(', ')||'—'}</div></div></div>
+  <div class="list" style="gap:6px">${L.map((m,i)=>`<button type="button" class="mrow" data-jm="${i}"><span class="num"><b>${fmtShort(m.date)}</b><br><span class="small muted">${m.date.slice(0,4)}</span></span>
+    <span>vs ${esc(m.adversaire||'?')}<br><span class="small muted num">${esc(m.score||'')}</span></span><span class="chip ${m.resultat==='V'?'st-faite':'st-annulee'}">${m.resultat}</span></button>`).join('')}</div>`}
+function openJMatch(i){const m=(UI.jm||[])[i];if(!m)return;const sig=analyseMatch(m),f=sigGroup(sig.filter(s=>s.st==='fort')),w=sigGroup(sig.filter(s=>s.st==='faible'));
+  openSheet(`${head('vs '+esc(m.adversaire||'Adversaire'))}<div class="row"><span class="chip ${m.resultat==='V'?'st-faite':'st-annulee'}">${m.resultat==='V'?'Victoire':'Défaite'}</span><b class="num">${esc(m.score||'')}</b><span class="small muted">${fmtDate(m.date)} ${m.date.slice(0,4)}</span></div>
+  <div class="mcols"><div class="panel"><h3 style="color:var(--ok)">Points forts</h3><ul class="mlist">${f.map(s=>`<li>${esc(s.txt)}</li>`).join('')||'<li class="muted">—</li>'}</ul></div>
+  <div class="panel"><h3 style="color:var(--danger)">À travailler</h3><ul class="mlist">${w.map(s=>`<li>${esc(s.txt)}</li>`).join('')||'<li class="muted">—</li>'}</ul></div></div>
+  <div>${MSTATS.map(ms=>{const x=(m.stats||{})[ms.k];if(!x)return '';const rep=x.rep??ms.rep,st=mStatus(x,rep);return `<div class="mstat"><span>${ms.l}<br><span class="small muted">repère ${rep} %</span></span><b class="num">${Math.round(mPct(x))} % <span class="muted small">${x.n}/${x.d}</span></b>${st?`<span class="chip ${MST[st][1]}">${MST[st][0]}</span>`:'<span></span>'}</div>`}).join('')}
+  <div class="mstat"><span>Winners / fautes directes</span><b class="num">${(m.winners||{}).total||0} / ${(m.fautes||{}).total||0}</b><span></span></div></div>
+  ${m.notes?`<div class="recap">${esc(m.notes)}</div>`:''}`)}
+function vJReglages(){
+  return `<h2>Réglages</h2>
+  <div class="panel list"><h3>Mes programmes</h3>
+    ${PJ.sources.length?PJ.sources.map((s,i)=>`<div class="cgl" style="border-left-color:var(--court)"><span>${s.data?`<b>${esc(nomJ(s.data))}</b> · Coach ${esc(s.data.coach.nom)} (${esc(s.data.coach.club)})<br><span class="small muted">Reçu le ${fmtShort(s.fetched.slice(0,10))} à ${s.fetched.slice(11,16)}</span>`:'<b>Programme en attente</b>'}${s.err?`<br><span class="small" style="color:var(--warn)">${esc(s.err)}</span>`:''}</span><button class="btn danger" type="button" data-jdel="${i}">Retirer</button></div>`).join(''):'<div class="small muted">Aucun programme suivi.</div>'}
+    <label class="fl">Ajouter un programme (lien ou code reçu du coach)<input id="jAdd" placeholder="https://…#j=…  ou  code"></label>
+    <div class="row"><button class="btn pri" type="button" id="jAddBtn">Ajouter</button></div>
+    <p class="small muted" style="margin:0">Un joueur suivi par deux coachs (école et individuel) peut ajouter les deux liens. Un parent peut suivre plusieurs enfants.</p></div>
+  ${window.Native?`<div class="panel list"><h3>Rappels</h3><div class="row"><label class="dday"><input type="checkbox" id="jrOn" ${PJ.rappels.on?'checked':''}><b>Me prévenir avant chaque entraînement</b></label>
+    <label class="fl" style="flex-direction:row;align-items:center;gap:8px"><select id="jrAv">${opts([[30,'30 min'],[60,'1 h'],[120,'2 h'],[1440,'la veille']],PJ.rappels.avant)}</select>avant</label></div><span id="jrMsg" class="small muted"></span></div>`:''}
+  <div class="panel list"><h3>Espace coach</h3><p class="small muted" style="margin:0">Pour les coachs qui utilisent cet appareil.</p><div><button class="btn" type="button" id="toCoach">Passer à l’espace coach</button></div></div>`}
+function vJVide(){return `<div class="welcome" style="padding-block:24px"><h2>Ton programme d’entraînement</h2>
+  <p class="muted" style="margin:0;max-width:46ch">Ouvre le lien envoyé par ton coach, ou colle-le ici.</p>
+  <label class="fl" style="width:100%;max-width:460px">Lien ou code<input id="jAdd" placeholder="https://…#j=…  ou  code"></label>
+  <button class="btn pri" type="button" id="jAddBtn">Voir mon programme</button>
+  ${PJ.sources.some(s=>!s.data)?`<p class="small" style="color:var(--warn)">${esc(PJ.sources.find(s=>s.err)?.err||'')}</p>`:''}</div>`}
+function itemsRappelsJ(){const r=PJ.rappels||{};if(!r.on)return [];const {list}=srcSel(),t=today(),now=Date.now(),items=[];
+  agendaJ(list,t,addDays(t,30)).forEach(e=>{if(e.type==='col'?e.annule:e.statut!=='planifiee')return;
+    const [y,mo,da]=e.date.split('-').map(Number),[h,mi]=e.debut.split(':').map(Number),at=new Date(y,mo-1,da,h,mi-(+r.avant||60));if(at.getTime()<=now+30000)return;
+    items.push({key:`${e.type}|${e.date}|${e.debut}|${e.groupe||''}`,at,title:`${e.debut} · ${e.type==='ind'?'Séance individuelle':e.groupe}`,body:e.type==='ind'?`${e.court} · ${e.themes.map(x=>x.t).join(', ')} · ${e.coach}`:`${e.ecole||''} · ${e.court}`})});
+  return items.sort((a,b)=>a.at-b.at).slice(0,60)}
+
 /* ============ Interactions ============ */
 document.addEventListener('click',ev=>{
   const t=ev.target.closest('button');if(!t)return;const d=t.dataset;
   if(d.tab)return go(d.tab);
+  if('publish' in d)return publier(true);
+  if(d.jshare){const p=S.joueurs.find(x=>x.id===d.jshare);p.partage={actif:true,key:newKey(),fileId:null};save();return publier(true)}
+  if(d.jrevoke){if(t.dataset.armed)return revoquer(d.jrevoke);t.dataset.armed=1;t.textContent='Confirmer : le lien ne fonctionnera plus';t.classList.add('solid');return}
+  if(d.jcopy){const i=$('jl-'+d.jcopy)||$('jc-'+d.jcopy),v=i.value;try{navigator.clipboard.writeText(v).then(()=>toast('Copié'),()=>{i.select();toast('Sélectionné : copiez-le')})}catch(e){i.select()}return}
+  if(d.jsel!==undefined){PJ.sel=d.jsel;saveJ();return render()}
+  if(d.jm!==undefined)return openJMatch(+d.jm);
+  if(d.jdel!==undefined){if(!t.dataset.armed){t.dataset.armed=1;t.textContent='Confirmer';t.classList.add('solid');return}PJ.sources.splice(+d.jdel,1);saveJ();render();return toast('Programme retiré')}
   if(d.per){const[pid,days]=d.per.split('|');const b=$('tx-'+pid);if(b)b.innerHTML=tauxBlock(pid,+days);return}
   if(d.pdf)return exportPdf(d.pdf,t);
   if(d.mimport!==undefined)return importMatch(d.mimport||null);
@@ -1388,7 +1716,18 @@ document.addEventListener('click',ev=>{
   if(d.editgroup)return formGroupe(S.groupes.find(x=>x.id===d.editgroup));
   if(d.wk!==undefined){UI.week=d.wk==='0'?monday(today()):addDays(UI.week,7*+d.wk);return render()}
   switch(t.id){
-    case 'quickAdd':return formSeance(null,UI.tab==='planning'&&UI.week!==monday(today())?{date:UI.week}:{});
+    case 'pickCoach':return setMode('coach');
+    case 'pickJoueur':return setMode('joueur');
+    case 'toJoueur':return setMode('joueur');
+    case 'toCoach':return versCoach();
+    case 'driveRestore':return restaurerDrive();
+    case 'jAddBtn':{const v=$('jAdd').value;t.disabled=true;return ajouterCode(v).then(ok=>{t.disabled=false;if(ok)render()})}
+    case 'pinSave':{const a=$('pinA').value,b=$('pinB').value;
+      if(!/^\d{4,8}$/.test(a)){$('pinMsg').textContent='Le code doit contenir 4 à 8 chiffres.';$('pinMsg').style.color='var(--danger)';return}
+      if(a!==b){$('pinMsg').textContent='Les deux saisies sont différentes.';$('pinMsg').style.color='var(--danger)';return}
+      return sha256('uscm-pin:'+a).then(h=>{S.pin=h;save();render();toast('Code de l’espace coach enregistré')})}
+    case 'pinDel':S.pin=null;save();render();return toast('Code supprimé');
+    case 'quickAdd':if(APPMODE==='joueur')return actualiserJ();return formSeance(null,UI.tab==='planning'&&UI.week!==monday(today())?{date:UI.week}:{});
     case 'saveSettings':S.coach=$('sCoach').value.trim();S.club=$('sClub').value.trim()||'USCM';
       S.pays=$('sPays').value.trim();S.instanceSigle=$('sSigle').value.trim();S.instanceNom=$('sInst').value.trim();
       S.courts=$('sCourts').value.split(',').map(x=>x.trim()).filter(Boolean);if(!S.courts.length)S.courts=['Court 1'];save();render();return toast('Réglages enregistrés');
@@ -1414,7 +1753,7 @@ document.addEventListener('click',ev=>{
       catch(e){$('bkMsg').textContent='Ce texte n’est pas une sauvegarde valide de l’application.';$('bkMsg').style.color='var(--danger)'}return;
     case 'wipe':$('wipeConfirm').innerHTML='<div class="warnbox">Tous les joueurs, séances et écoles seront effacés de cet appareil.</div><div class="row" style="margin-top:8px"><button class="btn danger solid" type="button" id="wipeYes">Tout effacer</button></div>';return;
     case 'wipeYes':S={v:1,demo:false,coach:S.coach,club:S.club,courts:S.courts,joueurs:[],ecoles:[],groupes:[],seances:[],annulations:{},presences:{},dispo:S.dispo,conges:[],matchs:[],
-      themesCoach:S.themesCoach,pays:S.pays,instanceSigle:S.instanceSigle,instanceNom:S.instanceNom};save();render();return toast('Données effacées');
+      themesCoach:S.themesCoach,pays:S.pays,instanceSigle:S.instanceSigle,instanceNom:S.instanceNom,pin:S.pin,drive:Object.assign({},S.drive,{backupId:S.drive&&S.drive.backupId})};save();render();return toast('Données effacées');
     case 'reseed':S=seed();save();render();return toast('Exemple rechargé');
   }
 });
@@ -1433,17 +1772,30 @@ document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='rOn
   const on=$('rOn').checked,avant=+$('rAv').value;
   if(on&&!(await Native.notifPermission(true))){$('rOn').checked=false;$('rMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone pour Coach USCM.';return}
   S.rappels={on,avant};save();$('rMsg').textContent=on?`Rappels actifs, ${avant>=60?avant/60+' h':avant+' min'} avant chaque créneau.`:'Rappels désactivés.'});
+document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='jrOn'&&id!=='jrAv')return;
+  const on=$('jrOn').checked;if(on&&!(await Native.notifPermission(true))){$('jrOn').checked=false;$('jrMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone.';return}
+  PJ.rappels={on,avant:+$('jrAv').value};saveJ();$('jrMsg').textContent=on?'Rappels actifs.':'Rappels désactivés.'});
+document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='jAdd'){ev.preventDefault();$('jAddBtn').click()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
+/* Session au démarrage : lien joueur reçu, ou choix coach / joueur */
+const lienRecu=parseCode(location.hash);
+if(lienRecu){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}if(APPMODE!=='joueur'){APPMODE='joueur';try{localStorage.setItem(MODE_KEY,'joueur')}catch(e){}}}
+if(!APPMODE&&fromLocal){APPMODE='coach';try{localStorage.setItem(MODE_KEY,'coach')}catch(e){}}
 render();
+if(lienRecu)ajouterCode(lienRecu).then(()=>render());
+else if(APPMODE==='joueur'&&PJ.sources.length&&navigator.onLine!==false)actualiserJ(true);
+if(APPMODE==='coach')prechargerGoogle();
 /* Appli installée depuis le navigateur : demander un stockage durable */
 try{if(!window.Native&&navigator.storage&&navigator.storage.persist&&matchMedia('(display-mode: standalone)').matches)navigator.storage.persist()}catch(e){}
 /* ---- Démarrage dans l'appli mobile ---- */
 if(window.Native){
-  Native.onBack(()=>{if(sheetEl){closeSheet();return true}if(UI.tab!=='jour'){go('jour');return true}return false});
+  Native.onBack(()=>{if(sheetEl){closeSheet();return true}const home=APPMODE==='joueur'?'jprog':'jour';if(APPMODE&&UI.tab!==home){go(home);return true}return false});
   Native.onPause(()=>Native.flush());
-  Native.restore().then(j=>{
-    if(j&&!fromLocal){try{const o=JSON.parse(j);if(o&&o.joueurs){S=migrate(o);try{localStorage.setItem(KEY,j)}catch(e){}render()}}catch(e){}}
-    else if(!j)Native.persist(JSON.stringify(S));
-    planRappels();Native.hideSplash()});
+  Promise.all([Native.restore(),Native.kvGet?Native.kvGet(MODE_KEY):null,Native.kvGet?Native.kvGet(PJ_KEY):null]).then(([j,m,pj])=>{
+    let restored=false;if(j&&!fromLocal){try{const o=JSON.parse(j);if(o&&o.joueurs){S=migrate(o);restored=true;try{localStorage.setItem(KEY,j)}catch(e){}}}catch(e){}}
+    else if(!j&&fromLocal)Native.persist(JSON.stringify(S));
+    if(!APPMODE&&!lienRecu&&(m||restored)){APPMODE=m||'coach';try{localStorage.setItem(MODE_KEY,APPMODE)}catch(e){}}
+    if(pj&&!PJ.sources.length){try{PJ=Object.assign(PJ,JSON.parse(pj));localStorage.setItem(PJ_KEY,pj)}catch(e){}}
+    render();planRappels();Native.hideSplash()});
 }
 </script>

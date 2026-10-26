@@ -10,7 +10,16 @@ Pas de Google Play ni d'App Store : l'appli est envoyée directement aux coachs.
 
 Pourquoi deux méthodes : Apple n'autorise pas l'installation d'un fichier d'appli envoyé directement sur un iPhone, contrairement à Android. Le lien Safari est la seule voie gratuite et sans compte Apple. La version iOS « native » reste possible par TestFlight (voir la fin), avec le compte Apple Developer à 99 USD par an.
 
-Dans les deux cas, les données restent sur le téléphone du coach et l'appli fonctionne hors connexion.
+Dans les deux cas, l'appli fonctionne hors connexion.
+
+### Deux espaces : coach et joueur
+
+Au premier lancement, l'appli demande **« Je suis coach »** ou **« Je suis joueur »**.
+
+- **Espace coach** : planning, joueurs, écoles, matchs… comme avant. Il peut être protégé par un code (Réglages → Protection de l'espace coach).
+- **Espace joueur** : le joueur voit le programme préparé par son coach (séances individuelles et cours collectifs des écoles), ses niveaux par thème, les comptes rendus du coach et ses matchs. Un joueur suivi par deux coachs, ou un parent avec plusieurs enfants, peut suivre plusieurs programmes.
+
+Le lien entre les deux passe par **le Google Drive du coach** : à chaque publication, l'appli dépose dans un dossier « Coach USCM » un fichier **chiffré** par joueur, et une sauvegarde complète des données du coach. Le joueur reçoit un lien (ou un QR code) contenant la clé de son fichier : lui seul peut le lire, sans compte ni mot de passe. Les données des coachs ne passent par aucun autre serveur.
 
 ### Différences entre les deux versions
 
@@ -22,6 +31,8 @@ Dans les deux cas, les données restent sur le téléphone du coach et l'appli f
 | Rappels avant les séances (notifications) | ✓ | — |
 | Bouton retour du téléphone | ✓ | — (pas de bouton retour sur iPhone) |
 | Mises à jour | Envoyer le nouvel APK | Automatiques à l'ouverture |
+| Espace joueur (lecture du programme) | ✓ | ✓ |
+| Coach : publication sur Google Drive | ✓ | Possible, mais la fenêtre de connexion Google peut être bloquée dans l'appli de l'écran d'accueil : publiez alors depuis Safari, un ordinateur ou un téléphone Android |
 
 ---
 
@@ -60,7 +71,35 @@ Dépôt GitHub → **Settings → Secrets and variables → Actions → New repo
 
 L'adresse de la version iPhone sera : `https://VOTRE-COMPTE.github.io/coach-uscm/`
 
-### 4. Lancer la compilation
+### 4. Relier l'appli à Google Drive (espace joueur)
+
+À faire une seule fois, avec votre compte Google, sur **console.cloud.google.com** (environ 15 minutes). Sans cette étape, tout fonctionne sauf l'espace joueur et la sauvegarde sur Drive.
+
+1. **Créer un projet** : menu en haut → « Nouveau projet » → nom `Coach USCM`.
+2. **Activer l'API Google Drive** : *API et services → Bibliothèque* → cherchez « Google Drive API » → **Activer**.
+3. **Écran de consentement** (*Google Auth Platform*) :
+   - *Branding* : nom de l'appli `Coach USCM`, votre e-mail.
+   - *Audience* : type **Externe**, puis **Publier l'application** (« En production »). L'appli ne demande que l'accès `drive.file` (uniquement les fichiers qu'elle crée elle-même) : Google ne demande pas de vérification pour cet accès.
+   - *Accès aux données* : ajoutez le champ d'application `.../auth/drive.file`.
+4. **Identifiant Web** : *Clients → Créer un client* → type **Application Web** → nom `Coach USCM web` → *Origines JavaScript autorisées* : `https://VOTRE-COMPTE.github.io` → **Créer**. Copiez l'**ID client** (il se termine par `.apps.googleusercontent.com`).
+5. **Identifiant Android** : *Clients → Créer un client* → type **Android** :
+   - Nom du package : `ma.uscm.coach`
+   - Empreinte SHA-1 : `F3:A6:5C:6C:B5:FC:04:EB:20:FE:B3:7F:EC:F5:32:05:CA:9F:9F:4D`
+     (celle de votre clé `uscm-release.jks` ; l'APK de test non signé n'est pas reconnu)
+6. **Clé d'API** (lecture des programmes par les joueurs) : *API et services → Identifiants → Créer des identifiants → Clé API*. Dans « Restrictions relatives aux API », choisissez **Google Drive API** uniquement. Copiez la clé.
+7. Dans le dépôt, modifiez le fichier **`uscm.config.json`** (bouton crayon sur GitHub) :
+   ```json
+   {
+     "googleClientId": "1234…apps.googleusercontent.com",
+     "googleApiKey": "AIza…",
+     "playerUrl": ""
+   }
+   ```
+   Laissez `playerUrl` vide : l'adresse GitHub Pages du dépôt est utilisée automatiquement pour les liens envoyés aux joueurs. Si vous hébergez la version iPhone ailleurs (Netlify…), mettez son adresse ici et ajoutez-la aussi dans les *Origines JavaScript autorisées* de l'étape 4.
+
+Ces identifiants ne sont pas secrets : ils permettent seulement à l'appli de demander l'autorisation au coach. Chaque coach se connecte avec **son propre compte Google** et les fichiers vont sur **son** Drive.
+
+### 5. Lancer la compilation
 
 Onglet **Actions** → « Compiler les applis » → **Run workflow** (elle se lance aussi à chaque envoi sur `main`). Comptez 5 à 10 minutes. Le résumé de la compilation indique où trouver chaque fichier.
 
@@ -81,6 +120,20 @@ Onglet **Actions** → « Compiler les applis » → **Run workflow** (elle se l
 
 Le texte d'installation à envoyer aux coachs est prêt dans `INSTALLATION-COACHS.md`.
 
+## Donner l'accès à un joueur
+
+1. Espace coach → fiche du joueur → **Activer l'espace joueur**. La première fois, l'appli demande de se connecter à Google et d'autoriser l'accès à Drive.
+2. Le lien d'accès et le QR code apparaissent dans la fiche. Envoyez le lien (bouton WhatsApp ou Copier), ou faites scanner le QR code.
+3. Le joueur ouvre le lien : sur iPhone comme sur Android, son programme s'affiche dans le navigateur et il peut l'ajouter à son écran d'accueil. S'il a l'APK, il peut aussi coller le lien dans **Réglages → Ajouter un programme**.
+4. Après vos modifications, touchez **Publier** (bandeau sur l'écran Aujourd'hui, ou Réglages). Tant que vous restez connecté à Google (50 minutes), chaque modification est publiée automatiquement.
+5. **Retirer l'accès** dans la fiche supprime le fichier du Drive : l'ancien lien ne fonctionne plus. Une nouvelle activation crée un nouveau lien.
+
+Le message à envoyer aux joueurs est prêt dans `INSTALLATION-JOUEURS.md`.
+
+**Données de jeunes joueurs** : les fichiers sont chiffrés et seuls les détenteurs du lien peuvent les lire. Informez les parents et recueillez leur accord avant d'activer l'espace d'un joueur mineur. Le numéro de téléphone des parents et vos notes privées ne sont jamais publiés.
+
+**Changer d'appareil (coach)** : sur le nouvel appareil, Réglages → **Restaurer depuis Google Drive**, avec le même compte Google.
+
 ---
 
 ## Mettre à jour l'appli
@@ -96,13 +149,15 @@ Le texte d'installation à envoyer aux coachs est prêt dans `INSTALLATION-COACH
 
 ```
 src/app.html            L'appli (le même fichier que la version web). C'est le seul fichier à modifier.
-src/native.js           Le pont avec le téléphone Android/iOS (stockage, partage, rappels, bouton retour).
+src/native.js           Le pont avec le téléphone Android/iOS (stockage, partage, rappels, bouton retour, connexion Google).
+uscm.config.json        Identifiants Google pour l'espace joueur (voir « Relier l'appli à Google Drive »).
 scripts/build-web.mjs   Prépare l'appli : www/ pour Android/iOS natif, pwa/ pour l'iPhone via Safari (--pwa).
 scripts/draw-assets.py  Dessine l'icône et l'écran de démarrage (sources dans assets/).
 android/                Projet Android Studio.
 ios/                    Projet Xcode (pour l'option TestFlight).
 .github/workflows/      Compilation automatique.
 INSTALLATION-COACHS.md  Message d'installation à envoyer aux coachs.
+INSTALLATION-JOUEURS.md Message à envoyer aux joueurs avec leur lien.
 ```
 
 Identifiant de l'appli : `ma.uscm.coach` — nom affiché : **Coach USCM**.
