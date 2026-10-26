@@ -559,6 +559,7 @@ function render(){
     document.getElementById('hTitle').textContent=sel||'Espace joueur';
     document.getElementById('hSub').textContent=sel?`Espace joueur · ${list[0].data.coach.club||''}`:'Coach Tennis';
     qa.hidden=!PJ.sources.length;qa.disabled=false;qa.textContent='Actualiser';
+    if(!list.length){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Espace joueur';qa.hidden=true;renderTabs();document.querySelector('nav.tabs').hidden=true;document.getElementById('app').innerHTML=vJVide();return}
     if(!TABS_J.some(x=>x[0]===UI.tab))UI.tab='jprog';renderTabs();
     document.getElementById('app').innerHTML=({jprog:vJProg,jprogres:vJProgres,jmatchs:vJMatchs,jreg:vJReglages}[UI.tab]||vJProg)();return}
   qa.hidden=false;qa.textContent='+ Séance';if(TABS_J.some(x=>x[0]===UI.tab))UI.tab='jour';
@@ -719,7 +720,8 @@ function vReglages(){
   <div class="panel list"><h3>Réinitialiser</h3>
     <div class="row"><button class="btn danger" type="button" id="wipe">Vider toutes les données</button><button class="btn" type="button" id="reseed">Recharger l’exemple</button></div>
     <div id="wipeConfirm"></div>
-  </div>`;
+  </div>
+  <p class="small muted">Coach Tennis · version ${esc(CFG.version||'web')}</p>`;
 }
 
 /* ============ Feuilles (modales) ============ */
@@ -1707,11 +1709,14 @@ function vJReglages(){
   ${jUnlocked?`<div class="panel list"><h3>Mon compte</h3><div class="small">Connecté : <b>${esc(jUnlocked)}</b></div>
     <div class="row"><button class="btn pri" type="button" id="jLock">Se déconnecter</button><button class="btn" type="button" id="jPinChange">Changer mon code PIN</button></div>
     ${CFG.relaisUrl?'':'<p class="small muted" style="margin:0">Tes réponses (présent / absent) sont envoyées à ton coach par WhatsApp.</p>'}</div>`:''}
-  <div class="panel list"><h3>Espace coach</h3><p class="small muted" style="margin:0">Pour les coachs qui utilisent cet appareil.</p><div><button class="btn" type="button" id="toCoach">Passer à l’espace coach</button></div></div>`}
-function vJVide(){return `<div class="welcome" style="padding-block:24px"><h2>Ton programme d’entraînement</h2>
-  <p class="muted" style="margin:0;max-width:46ch">Ouvre le lien envoyé par ton coach, ou colle-le ici.</p>
-  <label class="fl" style="width:100%;max-width:460px">Lien ou code<input id="jAdd" placeholder="https://…#j=…  ou  code"></label>
-  <button class="btn pri" type="button" id="jAddBtn">Voir mon programme</button>
+  <div class="panel list"><h3>Espace coach</h3><p class="small muted" style="margin:0">Pour les coachs qui utilisent cet appareil.</p><div><button class="btn" type="button" id="toCoach">Passer à l’espace coach</button></div></div>
+  <p class="small muted">Coach Tennis · version ${esc(CFG.version||'web')}</p>`}
+function vJVide(){return `<div class="welcome jlock"><span class="ball big" aria-hidden="true"></span><h2>Connexion joueur</h2>
+  <p class="small muted" style="margin:0">Étape 1 sur 2 · Code d’invitation</p>
+  <p class="muted" style="margin:0;max-width:46ch">Colle ici le lien (ou le code) d’invitation envoyé par ton coach. Tu choisiras ensuite ton code PIN personnel.</p>
+  <label class="fl" style="width:100%;max-width:460px">Code d’invitation<input id="jAdd" placeholder="https://…#j=…  ou  code" autocomplete="off"></label>
+  <button class="btn pri" type="button" id="jAddBtn">Continuer</button>
+  <div style="margin-top:8px"><button class="btn ghost small" type="button" id="toCoach">Je suis coach</button></div>
   ${PJ.sources.some(s=>!s.data)?`<p class="small" style="color:var(--warn)">${esc(PJ.sources.find(s=>s.err)?.err||'')}</p>`:''}</div>`}
 function itemsRappelsJ(){const r=PJ.rappels||{};if(!r.on)return [];const {list}=srcSel(),t=today(),now=Date.now(),items=[];
   agendaJ(list,t,addDays(t,30)).forEach(e=>{if(e.type==='col'?e.annule:e.statut!=='planifiee')return;
@@ -1732,6 +1737,7 @@ function jVerrou(){const noms=profilsJ();if(!noms.length)return null;
   return vJConnexion(noms)}
 function vJCreerPin(nom){UI.pinNom=nom;const pr=nom.split(' ')[0];
   return `<div class="welcome jlock"><span class="ball big" aria-hidden="true"></span><h2>Bienvenue ${esc(pr)} !</h2>
+  <p class="small muted" style="margin:0">Étape 2 sur 2 · Code PIN</p>
   <p class="muted" style="margin:0;max-width:44ch">Choisis ton code PIN personnel (4 à 6 chiffres). Il te sera demandé à chaque ouverture de l’appli.</p>
   <div class="pinf"><label class="fl">Code PIN<input id="pinN1" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6"></label>
   <label class="fl">Confirme ton code<input id="pinN2" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6"></label></div>

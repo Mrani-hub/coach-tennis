@@ -30,7 +30,7 @@ if (!cfg.playerUrl && process.env.GITHUB_REPOSITORY) {
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   cfg.playerUrl = `https://${owner.toLowerCase()}.github.io/${repo}/`;
 }
-const cfgJs = `<script>window.USCM_CONFIG=${JSON.stringify({ googleClientId: cfg.googleClientId || '', googleApiKey: cfg.googleApiKey || '', playerUrl: cfg.playerUrl || '', relaisUrl: cfg.relaisUrl || '' })};</script>`;
+const cfgJs = `<script>window.USCM_CONFIG=${JSON.stringify({ googleClientId: cfg.googleClientId || '', googleApiKey: cfg.googleApiKey || '', playerUrl: cfg.playerUrl || '', relaisUrl: cfg.relaisUrl || '', version: process.env.VERSION_NAME || 'dev' })};</script>`;
 if (!cfg.googleClientId || !cfg.googleApiKey) console.warn('⚠ config-google.json : identifiants Google vides — le partage avec les joueurs sera désactivé.');
 for (const [dst, src] of Object.entries(libs)) copyFileSync(nm(src), join(www, 'lib', dst));
 
@@ -89,7 +89,8 @@ if (PWA) {
 if ('serviceWorker' in navigator) {
   const had = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch(() => {});
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && typeof toast === 'function') toast('Coach Tennis a été mis à jour'); });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had) return; try { sessionStorage.setItem('ct-maj', '1'); } catch (e) {} location.reload(); });
+  try { if (sessionStorage.getItem('ct-maj')) { sessionStorage.removeItem('ct-maj'); setTimeout(() => typeof toast === 'function' && toast('Coach Tennis a été mis à jour'), 600); } } catch (e) {}
 }
 /* Ouvert dans Safari sur iPhone/iPad sans être installé : expliquer l'ajout à l'écran d'accueil */
 (function () {
