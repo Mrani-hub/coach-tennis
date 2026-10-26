@@ -736,7 +736,7 @@ let sheetEl=null;
 function openSheet(html){closeSheet();UI.openPid=null;sheetEl=document.createElement('div');sheetEl.className='ov';sheetEl.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
   sheetEl.addEventListener('click',e=>{if(e.target===sheetEl)closeSheet()});document.body.appendChild(sheetEl);
   const f=sheetEl.querySelector('input,select,textarea,button');if(f&&matchMedia('(min-width:700px)').matches)f.focus();}
-function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null}UI.openPid=null}
+function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null}UI.openPid=null;if(UI.majVue){UI.majVue=false;render()}}
 const $=id=>document.getElementById(id);
 const opts=(arr,sel)=>arr.map(o=>{const[v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(v)===String(sel)?'selected':''}>${esc(l)}</option>`}).join('');
 const head=t=>`<div class="sheet-h"><h2>${t}</h2><button class="btn ghost" type="button" data-close aria-label="Fermer">✕</button></div>`;
@@ -1794,10 +1794,10 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){jPaused=Da
   if(APPMODE==='coach'&&Date.now()-jPaused>60000)chargerReponses(true)});
 
 /* ---- Nouveautés et confirmations ---- */
-const repSig=e=>`${e.date} ${e.debut}`;
+const repSig=e=>`${e.date}|${e.debut}`;
 function aRepondre(list){const t=today(),lim=addDays(t,7),nowH=new Date().toTimeString().slice(0,5);
   return agendaJ(list,t,addDays(t,27)).filter(e=>{if(e.type==='col'?e.annule:e.statut!=='planifiee')return false;if(e.type==='col'&&e.date>lim)return false;if(e.date===t&&e.fin<nowH)return false;return true})}
-function repJ(e){const r=PJ.rep[`${fileOf(e.src)}|${e.key}`];if(!r)return null;return {...r,modifie:r.sig!==repSig(e)}}
+function repJ(e){const r=PJ.rep[`${fileOf(e.src)}|${e.key}`];if(!r)return null;return {...r,modifie:normSig(r.sig)!==normSig(repSig(e))}}
 function marquerVus(silent){PJ.sources.filter(s=>s.data).forEach(s=>{PJ.vu[fileOf(s)]=s.data.rev||0});if(!silent)saveJ()}
 function bandeauNouveau(list){const L=list.filter(s=>(s.data.rev||0)>(PJ.vu[fileOf(s)]||0));if(!L.length)return '';
   return `<div class="jnew"><b>Nouveau</b><span>${L.map(s=>esc(s.data.notif||'Ton coach a mis à jour ton programme')).join('<br>')}</span><button class="btn" type="button" data-jvu>OK</button></div>`}
@@ -1832,12 +1832,16 @@ async function chargerReponses(quiet){if(!CFG.relaisUrl||repLoading||navigator.o
   try{const r=await fetch(`${CFG.relaisUrl}${CFG.relaisUrl.includes('?')?'&':'?'}ids=${L.map(p=>p.partage.fileId).join(',')}`),j=await r.json();
     const byF={};L.forEach(p=>byF[p.partage.fileId]=p.id);S.reponses=S.reponses||{};let nouv=0;
     (j.r||[]).forEach(x=>{const pid=byF[x.f];if(!pid)return;const k=`${pid}|${x.s}`,o=S.reponses[k];if(!o||o.t!==x.t){nouv++;S.reponses[k]={st:x.st,m:x.m||'',t:x.t,g:x.g||''}}});
-    if(nouv){save(true);if(!sheetEl)render();toast(`${nouv} nouvelle${nouv>1?'s':''} réponse${nouv>1?'s':''} de joueurs`)}else if(!quiet)toast('Pas de nouvelle réponse')}
+    if(nouv){save(true);if(!sheetEl)render();else UI.majVue=true;toast(`${nouv} nouvelle${nouv>1?'s':''} réponse${nouv>1?'s':''} de joueurs`)}else if(!quiet)toast('Pas de nouvelle réponse')}
   catch(e){if(!quiet)toast('Réponses des joueurs indisponibles pour le moment')}finally{repLoading=false}}
+/* Horaire au moment de la réponse. Les anciennes réponses converties en date par Google Sheets sont ignorées pour cette comparaison. */
+function normSig(g){g=String(g||'').trim();if(!g)return '';
+  let m=g.match(/^(\d{4}-\d{2}-\d{2})[ |T](\d{1,2}):(\d{2})/);if(m)return `${m[1]}|${m[2].padStart(2,'0')}:${m[3]}`;
+  return ''}
 function repCoach(pid,key,d,h){const p=S.joueurs.find(x=>x.id===pid);if(!p||!p.partage||!p.partage.actif||!CFG.relaisUrl)return null;
-  const r=(S.reponses||{})[`${pid}|${key}`];if(!r)return {st:'att'};return {...r,ancien:r.g&&r.g!==`${d} ${h}`}}
-function repChipC(r){if(!r)return '';if(r.ancien)return '<span class="chip mmixte">Réponse avant modification</span>';
-  return r.st==='ok'?'<span class="chip mfort">✓ Confirmé</span>':r.st==='non'?'<span class="chip mfaible">✗ Absent</span>':'<span class="chip">⏳ En attente</span>'}
+  const r=(S.reponses||{})[`${pid}|${key}`];if(!r)return {st:'att'};const g=normSig(r.g);return {...r,ancien:!!g&&g!==`${d}|${h}`}}
+function repChipC(r){if(!r)return '';if(r.ancien)return '<span class="chip mmixte" title="Le joueur a répondu avant que vous changiez la date ou l’heure">⏳ À reconfirmer (horaire changé)</span>';
+  return r.st==='ok'?'<span class="chip mfort">✓ Confirmé</span>':r.st==='non'?'<span class="chip mfaible">✗ Désolé</span>':'<span class="chip">⏳ En attente</span>'}
 function repResumeCol(e){const L=e.ref.joueurIds.map(id=>repCoach(id,e.key,e.date,e.debut)).filter(Boolean);if(!L.length)return '';
   const ok=L.filter(r=>r.st==='ok'&&!r.ancien).length,non=L.filter(r=>r.st==='non'&&!r.ancien).length;
   return ` <span class="chip mfort">✓ ${ok}</span>${non?` <span class="chip mfaible">✗ ${non}</span>`:''}`}
@@ -1846,7 +1850,7 @@ function panneauReponses(){if(!CFG.relaisUrl||!partages().length)return '';const
     const ids=e.type==='ind'?[e.ref.joueurId]:e.ref.joueurIds;ids.forEach(pid=>{const r=repCoach(pid,e.type==='ind'?e.id:e.key,d,e.debut);if(r)it.push({e,d,pid,r})})})}
   if(!it.length)return '';const abs=it.filter(x=>x.r.st==='non'&&!x.r.ancien),att=it.filter(x=>x.r.st==='att'||x.r.ancien),ok=it.filter(x=>x.r.st==='ok'&&!x.r.ancien);
   return `<div class="panel"><div class="row between"><h3>Réponses des joueurs · 7 jours</h3><button class="btn ghost small" type="button" id="repRefresh">Actualiser</button></div>
-    <div class="small" style="margin-top:6px"><span class="chip mfort">✓ ${ok.length} confirmé${ok.length>1?'s':''}</span> <span class="chip mfaible">✗ ${abs.length} absent${abs.length>1?'s':''}</span> <span class="chip">⏳ ${att.length} en attente</span></div>
+    <div class="small" style="margin-top:6px"><span class="chip mfort">✓ ${ok.length} confirmé${ok.length>1?'s':''}</span> <span class="chip mfaible">✗ ${abs.length} désolé${abs.length>1?'s':''}</span> <span class="chip">⏳ ${att.length} en attente</span></div>
     ${abs.length?`<div class="list" style="margin-top:8px;gap:6px">${abs.map(x=>`<div class="small"><b>${esc(pName(S.joueurs.find(p=>p.id===x.pid)))}</b> · ${JC[dow(x.d)]} ${fmtShort(x.d)} ${x.e.debut}${x.r.m?`<br><span class="muted">« ${esc(x.r.m)} »</span>`:''}</div>`).join('')}</div>`:''}</div>`}
 
 /* ============ Mises à jour de l'appli ============ */
@@ -1875,6 +1879,7 @@ function majReglages(){if(!majActive())return '';
     <div class="row">${MAJ?'<button class="btn pri" type="button" data-maj>Mettre à jour</button>':''}<button class="btn" type="button" id="majCheck">Rechercher une mise à jour</button></div>
     ${window.Native?'':'<p class="small muted" style="margin:0">Sur iPhone et dans le navigateur, l’appli se met à jour toute seule à l’ouverture.</p>'}</div>`}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-majCheck>6*3600000)verifierMaj(false)});
+setInterval(()=>{if(APPMODE==='coach'&&!document.hidden&&CFG.relaisUrl)chargerReponses(true)},60000);
 
 /* ============ Interactions ============ */
 document.addEventListener('click',ev=>{

@@ -48,7 +48,8 @@ function doPost(e) {
     const verrou = LockService.getScriptLock();
     verrou.waitLock(10000);
     try {
-      feuille_().appendRow([new Date(), d.f, d.s, d.st, texte_(d.msg), texte_(d.g)]);
+      // L'apostrophe force Google Sheets à garder créneau et horaire en texte (sinon ils seraient convertis en dates)
+      feuille_().appendRow([new Date(), d.f, "'" + d.s, d.st, texte_(d.msg), "'" + String(d.g || '').slice(0, 40)]);
     } finally {
       verrou.releaseLock();
     }
