@@ -616,7 +616,7 @@ function vJour(){
 function vPlanning(){
   const m=UI.week, t=today(), st=weekStats(m), end=addDays(m,6);
   const days=[...Array(7)].map((_,i)=>addDays(m,i));
-  return `<div class="weekbar">
+  return `${bandeauPublier()}<div class="weekbar">
     <button class="btn" type="button" data-wk="-1" aria-label="Semaine précédente">‹</button>
     <span class="lbl">${fmtShort(m)} – ${fmtShort(end)}</span>
     <button class="btn" type="button" data-wk="1" aria-label="Semaine suivante">›</button>
@@ -802,7 +802,7 @@ function formSeance(s,preset={}){
     if(isNew)dates.forEach(d=>S.seances.push({...s,...v,themes:v.themes.map(x=>({...x})),id:uid(),date:d,statut:'planifiee'}));
     else Object.assign(s,v);
     save();closeSheet();render();
-    toast(isNew?(dates.length>1?`${dates.length} séances planifiées${enCg.length?` · ${enCg.length} semaine${enCg.length>1?'s':''} de congé sautée${enCg.length>1?'s':''}`:''}`:'Séance planifiée'):'Séance modifiée');
+    toast(isNew?(dates.length>1?`${dates.length} séances planifiées${enCg.length?` · ${enCg.length} semaine${enCg.length>1?'s':''} de congé sautée${enCg.length>1?'s':''}`:''}`:'Séance planifiée'):'Séance modifiée');apresPlanning();
   };
   sheetEl.addEventListener('input',()=>{if(forced){forced=false;$('fSave').textContent='Enregistrer';$('fSave').classList.remove('danger','solid');$('fWarn').innerHTML=''}});
 }
@@ -908,10 +908,10 @@ function openSeance(id){
   <div class="row"><button class="btn pri" type="button" id="oSave">Enregistrer</button><button class="btn" type="button" id="oEdit">Modifier</button><button class="btn" type="button" id="oDup">Copier semaine suivante</button><span style="flex:1"></span><button class="btn danger" type="button" id="oDel">Supprimer</button></div>`);
   let st=s.statut;
   $('stSeg').onclick=ev=>{const b=ev.target.closest('[data-st]');if(!b)return;st=b.dataset.st;$('stSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b))};
-  $('oSave').onclick=()=>{s.statut=st;s.notes=$('oN').value.trim();save();closeSheet();render();toast('Séance mise à jour')};
+  $('oSave').onclick=()=>{s.statut=st;s.notes=$('oN').value.trim();save();closeSheet();render();toast('Séance mise à jour');apresPlanning()};
   $('oEdit').onclick=()=>formSeance(s);
-  $('oDup').onclick=()=>{S.seances.push({...s,themes:thList(s).map(x=>({...x})),id:uid(),date:addDays(s.date,7),statut:'planifiee',notes:''});save();closeSheet();render();toast(`Copiée au ${fmtShort(addDays(s.date,7))}`)};
-  $('oDel').onclick=function(){if(this.dataset.armed){S.seances=S.seances.filter(x=>x.id!==id);save();closeSheet();render();toast('Séance supprimée')}else{this.dataset.armed=1;this.textContent='Confirmer la suppression';this.classList.add('solid')}};
+  $('oDup').onclick=()=>{S.seances.push({...s,themes:thList(s).map(x=>({...x})),id:uid(),date:addDays(s.date,7),statut:'planifiee',notes:''});save();closeSheet();render();toast(`Copiée au ${fmtShort(addDays(s.date,7))}`);apresPlanning()};
+  $('oDel').onclick=function(){if(this.dataset.armed){S.seances=S.seances.filter(x=>x.id!==id);save();closeSheet();render();toast('Séance supprimée');apresPlanning()}else{this.dataset.armed=1;this.textContent='Confirmer la suppression';this.classList.add('solid')}};
 }
 
 function openCours(key){
@@ -930,7 +930,7 @@ function openCours(key){
   const upd=()=>{const l=$('presL');if(l&&$('pc'))$('pc').textContent=`${l.querySelectorAll(':checked').length}/${g.joueurIds.length}`};upd();
   if($('presL'))$('presL').onchange=upd;
   if($('cSave'))$('cSave').onclick=()=>{S.presences[key]=[...$('presL').querySelectorAll(':checked')].map(x=>x.value);save();closeSheet();render();toast('Présences enregistrées')};
-  if($('cOff'))$('cOff').onclick=()=>{if(off)delete S.annulations[key];else S.annulations[key]=1;save();closeSheet();render();toast(off?'Cours rétabli':'Cours annulé pour cette date')};
+  if($('cOff'))$('cOff').onclick=()=>{if(off)delete S.annulations[key];else S.annulations[key]=1;save();closeSheet();render();toast(off?'Cours rétabli':'Cours annulé pour cette date');apresPlanning()};
 }
 
 function formJoueur(p){
@@ -1026,7 +1026,7 @@ function formGroupe(g,ecoleId){
     const hd=slots.filter(c=>!((S.dispo||{})[c.jour]||[]).some(r=>toMin(r.debut)<=toMin(c.debut)&&toMin(c.debut)+(+c.duree)<=toMin(r.fin)));
     if(hd.length&&!gForced){gForced=true;$('gW').innerHTML=`<div class="warnbox">Hors de vos disponibilités : ${hd.map(slotTxt).join(' ; ')}.</div>`;$('gSave').textContent='Enregistrer quand même';return}
     Object.assign(g,{nom,ecoleId:$('gE').value,niveau:$('gL').value.trim(),debutPeriode:$('gD').value,finPeriode:$('gF').value,creneaux:slots,joueurIds:[...$('gJ').querySelectorAll(':checked')].map(x=>x.value)});
-    if(isNew)S.groupes.push(g);save();closeSheet();render();toast('Groupe enregistré')};
+    if(isNew)S.groupes.push(g);save();closeSheet();render();toast('Groupe enregistré');apresPlanning()};
   if($('gDel'))$('gDel').onclick=function(){if(this.dataset.armed){S.groupes=S.groupes.filter(x=>x.id!==g.id);save();closeSheet();render();toast('Groupe supprimé')}else{this.dataset.armed=1;this.textContent='Confirmer la suppression';this.classList.add('solid')}};
 }
 
@@ -1503,6 +1503,14 @@ function diffNotif(old,cur){const t=today(),nv=[],md=[],an=[];
   let txt=L.length===1?`${un} : ${lab(L[0])}`:`${L.length} ${plus}`;const autres=tot-L.length;if(autres)txt+=` (+${autres} changement${autres>1?'s':''})`;
   const enc=new TextEncoder();while(enc.encode(txt).length>110)txt=txt.slice(0,-2)+'…';return txt}
 
+/* Après une modification du planning : publier tout de suite pour les joueurs concernés */
+let apresTimer=null;
+function apresPlanning(){if(!driveReady())return;clearTimeout(apresTimer);apresTimer=setTimeout(()=>{
+  const L=partages().filter(p=>p.partage.fileId&&JSON.stringify(snapJoueur(p).m)!==JSON.stringify((p.partage.snap||{}).m));if(!L.length)return;
+  const noms=L.map(p=>p.prenom).join(', ');
+  if(gTok&&gTok.exp>Date.now()+60000){publier(false,false);return}
+  toast(`Publication pour ${noms}…`);publier(true,false)},400)}
+
 /* ---- Publication ---- */
 const partages=()=>S.joueurs.filter(p=>p.partage&&p.partage.actif);
 let publishing=false,autoTimer=null;
@@ -1771,6 +1779,7 @@ function oubliPin(){const c=parseCode($('jForgotCode').value),nom=UI.pinNom;
   const ok=c&&PJ.sources.some(s=>s.code===c&&s.data&&nomJ(s.data)===nom);
   if(!ok){toast('Ce lien ne correspond pas à ce joueur');return}
   delete PJ.profils[nom];PJ.essais={n:0,t:0};saveJ();render()}
+setInterval(()=>{if(APPMODE==='joueur'&&jUnlocked&&!document.hidden&&navigator.onLine!==false&&!sheetEl)actualiserJ(true)},5*60000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){jPaused=Date.now();return}
   if(APPMODE==='joueur'&&jUnlocked&&Date.now()-jPaused>5*60000){jUnlocked=null;closeSheet();render()}
   else if(APPMODE==='joueur'&&jUnlocked&&navigator.onLine!==false&&Date.now()-jPaused>60000)actualiserJ(true);
@@ -1910,7 +1919,7 @@ document.addEventListener('click',ev=>{
       S.dispo=JSON.parse(JSON.stringify(UI.dd));save();render();return toast('Disponibilités enregistrées')}
     case 'addConge':{const a=$('cD').value,b=$('cF').value;
       if(!a||!b||b<a){$('cMsg').textContent='La date de fin doit être le même jour ou après la date de début.';$('cMsg').style.color='var(--danger)';return}
-      S.conges.push({id:uid(),debut:a,fin:b,motif:$('cM').value.trim()});save();render();return toast('Congé ajouté')}
+      S.conges.push({id:uid(),debut:a,fin:b,motif:$('cM').value.trim()});save();render();toast('Congé ajouté');return apresPlanning()}
     case 'copyBk':{const txt=JSON.stringify(S);const ok=()=>toast('Sauvegarde copiée');
       const fb=()=>{$('bkIn').value=txt;$('bkIn').select();$('bkMsg').textContent='Copie automatique impossible : le texte est sélectionné, copiez-le manuellement.'};
       try{navigator.clipboard.writeText(txt).then(ok,fb)}catch(e){fb()}return}
