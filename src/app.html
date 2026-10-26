@@ -263,6 +263,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .jconf{display:flex;flex-direction:column;gap:8px;border-color:var(--clay)}
 .jrep{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .jrep .btn{flex:1 1 auto}
+.majb{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 12px;border-radius:var(--r);background:var(--court);color:var(--court-ink)}
+.majb>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}
+.majb span{font-size:13px;opacity:.9}
+.majb .btn{background:var(--ball);color:var(--ball-ink);border-color:var(--ball)}
+.majb .btn.ghost{background:transparent;color:var(--court-ink);border-color:transparent}
 .recap{font-size:14px;padding:8px 10px;border-left:3px solid var(--court);background:var(--surface-2);border-radius:0 6px 6px 0}
 .bar .tr{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
 .bar .tr i{display:block;height:100%;background:var(--court)}
@@ -551,23 +556,24 @@ function renderTabs(){
 function go(tab){UI.tab=tab;try{sessionStorage.setItem('uscm-tab',tab)}catch(e){}render();window.scrollTo(0,0)}
 function render(){
   const qa=document.getElementById('quickAdd');
-  if(!APPMODE){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Entraînements tennis jeunes';qa.hidden=true;renderTabs();document.getElementById('app').innerHTML=vAccueil();return}
+  if(!APPMODE){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Entraînements tennis jeunes';qa.hidden=true;renderTabs();document.getElementById('app').innerHTML=bandeauMaj()+vAccueil();return}
   if(APPMODE==='joueur'){const lock=jVerrou();
-    if(lock){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Espace joueur';qa.hidden=true;document.querySelector('nav.tabs').hidden=true;document.getElementById('app').innerHTML=lock;
+    if(lock){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Espace joueur';qa.hidden=true;document.querySelector('nav.tabs').hidden=true;document.getElementById('app').innerHTML=bandeauMaj()+lock;
       const fi=$('jPinIn')||$('pinN1');if(fi&&!fi.disabled&&!window.Native)setTimeout(()=>fi.focus(),50);return}
     const {sel,list}=srcSel();
     document.getElementById('hTitle').textContent=sel||'Espace joueur';
     document.getElementById('hSub').textContent=sel?`Espace joueur · ${list[0].data.coach.club||''}`:'Coach Tennis';
     qa.hidden=!PJ.sources.length;qa.disabled=false;qa.textContent='Actualiser';
-    if(!list.length){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Espace joueur';qa.hidden=true;renderTabs();document.querySelector('nav.tabs').hidden=true;document.getElementById('app').innerHTML=vJVide();return}
+    if(!list.length){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Espace joueur';qa.hidden=true;renderTabs();document.querySelector('nav.tabs').hidden=true;document.getElementById('app').innerHTML=bandeauMaj()+vJVide();return}
     if(!TABS_J.some(x=>x[0]===UI.tab))UI.tab='jprog';renderTabs();
-    document.getElementById('app').innerHTML=({jprog:vJProg,jprogres:vJProgres,jmatchs:vJMatchs,jreg:vJReglages}[UI.tab]||vJProg)();return}
+    document.getElementById('app').innerHTML=bandeauMaj()+({jprog:vJProg,jprogres:vJProgres,jmatchs:vJMatchs,jreg:vJReglages}[UI.tab]||vJProg)();return}
+  UI.majHtml=bandeauMaj();
   qa.hidden=false;qa.textContent='+ Séance';if(TABS_J.some(x=>x[0]===UI.tab))UI.tab='jour';
   document.getElementById('hTitle').textContent=`Coach ${S.coach||''}`.trim();
   document.getElementById('hSub').textContent=`${S.club||'Club'} · entraînements jeunes`;
   renderTabs();
   const v={jour:vJour,planning:vPlanning,joueurs:vJoueurs,ecoles:vEcoles,reglages:vReglages}[UI.tab]||vJour;
-  document.getElementById('app').innerHTML=v();
+  document.getElementById('app').innerHTML=UI.majHtml+v();
 }
 function evCard(e,compact){
   const sub=e.type==='ind'
@@ -721,6 +727,7 @@ function vReglages(){
     <div class="row"><button class="btn danger" type="button" id="wipe">Vider toutes les données</button><button class="btn" type="button" id="reseed">Recharger l’exemple</button></div>
     <div id="wipeConfirm"></div>
   </div>
+  ${majReglages()}
   <p class="small muted">Coach Tennis · version ${esc(CFG.version||'web')}</p>`;
 }
 
@@ -1718,6 +1725,7 @@ function vJReglages(){
     <div class="row"><button class="btn pri" type="button" id="jLock">Se déconnecter</button><button class="btn" type="button" id="jPinChange">Changer mon code PIN</button></div>
     ${CFG.relaisUrl?'':'<p class="small muted" style="margin:0">Tes réponses (présent / absent) sont envoyées à ton coach par WhatsApp.</p>'}</div>`:''}
   <div class="panel list"><h3>Espace coach</h3><p class="small muted" style="margin:0">Pour les coachs qui utilisent cet appareil.</p><div><button class="btn" type="button" id="toCoach">Passer à l’espace coach</button></div></div>
+  ${majReglages()}
   <p class="small muted">Coach Tennis · version ${esc(CFG.version||'web')}</p>`}
 function vJVide(){return `<div class="welcome jlock"><span class="ball big" aria-hidden="true"></span><h2>Connexion joueur</h2>
   <p class="small muted" style="margin:0">Étape 1 sur 2 · Code d’invitation</p>
@@ -1841,11 +1849,40 @@ function panneauReponses(){if(!CFG.relaisUrl||!partages().length)return '';const
     <div class="small" style="margin-top:6px"><span class="chip mfort">✓ ${ok.length} confirmé${ok.length>1?'s':''}</span> <span class="chip mfaible">✗ ${abs.length} absent${abs.length>1?'s':''}</span> <span class="chip">⏳ ${att.length} en attente</span></div>
     ${abs.length?`<div class="list" style="margin-top:8px;gap:6px">${abs.map(x=>`<div class="small"><b>${esc(pName(S.joueurs.find(p=>p.id===x.pid)))}</b> · ${JC[dow(x.d)]} ${fmtShort(x.d)} ${x.e.debut}${x.r.m?`<br><span class="muted">« ${esc(x.r.m)} »</span>`:''}</div>`).join('')}</div>`:''}</div>`}
 
+/* ============ Mises à jour de l'appli ============ */
+let MAJ=null,majCheck=0;
+const cmpVer=(x,y)=>{const a=String(x).split('.').map(Number),b=String(y).split('.').map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d>0?1:-1}return 0};
+const majActive=()=>!!(CFG.playerUrl&&/^\d+\.\d+/.test(CFG.version||''));
+async function verifierMaj(manuel){if(!majActive())return;majCheck=Date.now();
+  try{const r=await fetch(`${CFG.playerUrl.replace(/#.*$/,'').replace(/\/?$/,'/')}version.json?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();
+    MAJ=cmpVer(j.version,CFG.version)>0?j:null;
+    if(MAJ&&!window.Native&&navigator.serviceWorker){navigator.serviceWorker.getRegistration().then(g=>g&&g.update()).catch(()=>{})}
+    if(manuel)toast(MAJ?`Version ${MAJ.version} disponible`:`Vous avez la dernière version (${CFG.version})`);
+    if(manuel||MAJ)render()}
+  catch(e){if(manuel)toast('Vérification impossible : vérifiez la connexion')}}
+function bandeauMaj(){if(!MAJ)return '';let plusTard='';try{plusTard=localStorage.getItem('ct-maj-plus-tard')}catch(e){}if(plusTard===MAJ.version)return '';
+  return `<div class="majb" role="status"><div><b>Nouvelle version ${esc(MAJ.version)} disponible</b>${MAJ.notes?`<span>${esc(MAJ.notes)}</span>`:''}</div>
+    <div class="row"><button class="btn" type="button" data-maj>${window.Native?'Mettre à jour':'Recharger'}</button><button class="btn ghost" type="button" data-majlater>Plus tard</button></div></div>`}
+function installerMaj(){if(!MAJ)return;
+  if(!window.Native){location.reload();return}
+  try{localStorage.removeItem('ct-maj-plus-tard')}catch(e){}
+  openSheet(`${head('Mettre à jour Coach Tennis')}<p style="margin:0">Version ${esc(CFG.version)} → <b>${esc(MAJ.version)}</b></p>${MAJ.notes?`<div class="recap">${esc(MAJ.notes)}</div>`:''}
+    <ol class="mlist"><li>Touchez <b>Télécharger</b> : le navigateur télécharge la nouvelle version.</li><li>Ouvrez le fichier <b>CoachTennis.apk</b> (notification de téléchargement).</li><li>Touchez <b>Mettre à jour</b> ou <b>Installer</b>. Vos données sont conservées.</li></ol>
+    <div class="row"><a class="btn pri" href="${esc(MAJ.apk)}" target="_blank" rel="noopener" id="majDl">Télécharger</a><button class="btn" type="button" data-close>Annuler</button></div>`);
+  $('majDl').addEventListener('click',()=>{if(window.Native&&Native.flush)Native.flush();setTimeout(()=>toast('Téléchargement lancé : ouvrez ensuite CoachTennis.apk'),300)})}
+function majReglages(){if(!majActive())return '';
+  return `<div class="panel list"><h3>Mise à jour</h3><div class="small">Version installée : <b>${esc(CFG.version)}</b>${MAJ?` · <span style="color:var(--clay);font-weight:700">version ${esc(MAJ.version)} disponible</span>`:''}</div>
+    <div class="row">${MAJ?'<button class="btn pri" type="button" data-maj>Mettre à jour</button>':''}<button class="btn" type="button" id="majCheck">Rechercher une mise à jour</button></div>
+    ${window.Native?'':'<p class="small muted" style="margin:0">Sur iPhone et dans le navigateur, l’appli se met à jour toute seule à l’ouverture.</p>'}</div>`}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-majCheck>6*3600000)verifierMaj(false)});
+
 /* ============ Interactions ============ */
 document.addEventListener('click',ev=>{
   const t=ev.target.closest('button');if(!t)return;const d=t.dataset;
   if(d.tab)return go(d.tab);
   if('publish' in d)return publier(true);
+  if('maj' in d)return installerMaj();
+  if('majlater' in d){try{localStorage.setItem('ct-maj-plus-tard',MAJ.version)}catch(e){}return render()}
   if(d.jshare){const p=S.joueurs.find(x=>x.id===d.jshare);p.partage={actif:true,key:newKey(),fileId:null};save();return publier(true)}
   if(d.jrevoke){if(t.dataset.armed)return revoquer(d.jrevoke);t.dataset.armed=1;t.textContent='Confirmer : le lien ne fonctionnera plus';t.classList.add('solid');return}
   if(d.jcopy){const i=$('jl-'+d.jcopy)||$('jc-'+d.jcopy),v=i.value;try{navigator.clipboard.writeText(v).then(()=>toast('Copié'),()=>{i.select();toast('Sélectionné : copiez-le')})}catch(e){i.select()}return}
@@ -1886,6 +1923,7 @@ document.addEventListener('click',ev=>{
   if(d.editgroup)return formGroupe(S.groupes.find(x=>x.id===d.editgroup));
   if(d.wk!==undefined){UI.week=d.wk==='0'?monday(today()):addDays(UI.week,7*+d.wk);return render()}
   switch(t.id){
+    case 'majCheck':return verifierMaj(true);
     case 'jPinCreate':return creerPin();
     case 'jPinOk':return verifierPin();
     case 'jPinForgot':$('jForgot').hidden=false;return $('jForgotCode').focus();
@@ -1962,6 +2000,7 @@ render();
 if(lienRecu)ajouterCode(lienRecu).then(()=>render());
 else if(APPMODE==='joueur'&&PJ.sources.length&&navigator.onLine!==false)actualiserJ(true);
 if(APPMODE==='coach'){prechargerGoogle();setTimeout(()=>chargerReponses(true),1500)}
+setTimeout(()=>verifierMaj(false),3000);
 /* Appli installée depuis le navigateur : demander un stockage durable */
 try{if(!window.Native&&navigator.storage&&navigator.storage.persist&&matchMedia('(display-mode: standalone)').matches)navigator.storage.persist()}catch(e){}
 /* ---- Démarrage dans l'appli mobile ---- */

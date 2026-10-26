@@ -86,6 +86,7 @@ jobs:
           make_latest: true
           body: |
             APK Android de Coach Tennis, version ${{ env.VERSION_NAME }}.
+            Nouveautés : ${{ github.event.head_commit.message }}
             Installation : ouvrir CoachTennis.apk sur le téléphone et autoriser l'installation depuis cette source.
             Une version déjà installée est mise à jour sans perte de données.
 
@@ -99,6 +100,8 @@ jobs:
           node-version: 22
           cache: npm
       - name: Construire
+        env:
+          NOTES: ${{ github.event.head_commit.message }}
         run: |
           npm ci
           npm run build:pwa
@@ -116,7 +119,7 @@ jobs:
   pages:
     name: Mise en ligne (GitHub Pages)
     if: vars.PUBLIER_PAGES == 'true'
-    needs: iphone
+    needs: [iphone, android]
     runs-on: ubuntu-latest
     permissions:
       pages: write

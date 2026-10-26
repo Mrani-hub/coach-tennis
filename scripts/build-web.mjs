@@ -165,6 +165,17 @@ self.addEventListener('fetch', e => {
 });
 `);
 }
+/* Numéro de la dernière version, lu par les applis pour proposer la mise à jour */
+if (PWA) {
+  const repo = process.env.GITHUB_REPOSITORY || '';
+  const notes = String(process.env.NOTES || '').split('\n')[0].replace(/\s+/g, ' ').trim().slice(0, 200);
+  writeFileSync(join(www, 'version.json'), JSON.stringify({
+    version: process.env.VERSION_NAME || 'dev',
+    date: new Date().toISOString(),
+    notes,
+    apk: repo ? `https://github.com/${repo}/releases/latest/download/CoachTennis.apk` : ''
+  }, null, 2));
+}
 /* 6. Page de confidentialité (demandée par Google pour l'écran de connexion) */
 if (PWA) {
   const repo = process.env.GITHUB_REPOSITORY || '';
