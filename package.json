@@ -5,6 +5,7 @@
   "description": "Coach USCM — planification et suivi des entraînements de tennis jeunes",
   "scripts": {
     "build:web": "node scripts/build-web.mjs",
+    "build:pwa": "node scripts/build-web.mjs --pwa",
     "sync": "npm run build:web && npx cap sync",
     "assets": "npx capacitor-assets generate --android --ios --iconBackgroundColor '#1d5c45' --iconBackgroundColorDark '#0e1612' --splashBackgroundColor '#1d5c45' --splashBackgroundColorDark '#0e1612'",
     "android": "npm run sync && npx cap open android",
@@ -29,6 +30,7 @@
     "esbuild": "^0.28.2",
     "jspdf": "2.5.1",
     "jspdf-autotable": "3.8.2",
-    "pdfjs-dist": "3.11.174"
+    "pdfjs-dist": "3.11.174",
+    "sharp": "0.32.6"
   }
 }

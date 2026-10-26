@@ -455,6 +455,10 @@ async function offerFile(fn,blob,okMsg){
   let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
   if(dl){try{await dl.save({filename:fn,data:blob});toast(okMsg)}
     catch(e){toast(e&&e.code==='declined'?'Enregistrement annulé':e&&e.code==='rate_limited'?'Une demande est déjà ouverte, réessayez dans un instant':'Enregistrement impossible dans cette vue')}return}
+  const mobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(mobile&&navigator.canShare){try{const file=new File([blob],fn,{type:blob.type||'application/octet-stream'});
+    if(navigator.canShare({files:[file]})){await navigator.share({files:[file],title:fn});toast(okMsg);return}}
+    catch(e){if(e&&e.name==='AbortError')return}}
   const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);toast(okMsg)}
 function restoreFrom(o){if(!o||!Array.isArray(o.joueurs))throw 0;S=migrate(Object.assign({annulations:{},presences:{},courts:['Court 1']},o));save();render();toast('Sauvegarde restaurée')}
 const UI={tab:'jour',week:monday(today()),q:''};
@@ -1431,6 +1435,8 @@ document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='rOn
   S.rappels={on,avant};save();$('rMsg').textContent=on?`Rappels actifs, ${avant>=60?avant/60+' h':avant+' min'} avant chaque créneau.`:'Rappels désactivés.'});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
 render();
+/* Appli installée depuis le navigateur : demander un stockage durable */
+try{if(!window.Native&&navigator.storage&&navigator.storage.persist&&matchMedia('(display-mode: standalone)').matches)navigator.storage.persist()}catch(e){}
 /* ---- Démarrage dans l'appli mobile ---- */
 if(window.Native){
   Native.onBack(()=>{if(sheetEl){closeSheet();return true}if(UI.tab!=='jour'){go('jour');return true}return false});

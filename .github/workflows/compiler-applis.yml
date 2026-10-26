@@ -1,6 +1,11 @@
-# Compile Coach USCM pour Android et iOS à chaque envoi sur la branche main (ou à la demande, onglet Actions).
-# Android : APK de test toujours produit ; APK et AAB signés si les secrets ANDROID_* sont renseignés.
-# iOS : vérification de compilation toujours faite ; envoi sur TestFlight si les secrets APPLE_* sont renseignés.
+# Compile Coach USCM à chaque envoi sur la branche main (ou à la demande : onglet Actions → Run workflow).
+#
+#  Android : APK signé à envoyer directement aux coachs (secrets ANDROID_*).
+#            Il est aussi joint à une « Release » GitHub : lien de téléchargement fixe
+#            …/releases/latest/download/CoachUSCM.apk
+#  iPhone  : appli web installable depuis Safari (écran d'accueil), téléchargeable en artifact
+#            et mise en ligne sur GitHub Pages si la variable PUBLIER_PAGES vaut true.
+#  iOS natif (option payante, compte Apple Developer) : TestFlight si la variable IOS_TESTFLIGHT vaut true.
 name: Compiler les applis
 
 on:
@@ -14,8 +19,10 @@ env:
 
 jobs:
   android:
-    name: Android
+    name: Android (APK)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
@@ -29,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
-      - name: Installer et préparer l'appli web
+      - name: Installer et préparer l'appli
         run: |
           npm ci
           npm run build:web
@@ -39,7 +46,7 @@ jobs:
         run: |
           echo "$KS_B64" | base64 --decode > "$RUNNER_TEMP/uscm-release.jks"
           echo "USCM_KEYSTORE_PATH=$RUNNER_TEMP/uscm-release.jks" >> "$GITHUB_ENV"
-      - name: Compiler
+      - name: Compiler l'APK
         working-directory: android
         env:
           USCM_VERSION_CODE: ${{ env.VERSION_CODE }}
@@ -49,27 +56,81 @@ jobs:
           USCM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
+          mkdir -p "$GITHUB_WORKSPACE/sortie"
           if [ -n "$USCM_KEYSTORE_PATH" ]; then
-            ./gradlew --no-daemon assembleDebug assembleRelease bundleRelease
+            ./gradlew --no-daemon assembleRelease
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/sortie/CoachUSCM.apk"
+            echo "### ✅ APK Coach USCM $VERSION_NAME signé" >> "$GITHUB_STEP_SUMMARY"
+            echo "Téléchargez l'artifact **CoachUSCM-$VERSION_NAME-Android** ci-dessous, ou la Release du dépôt." >> "$GITHUB_STEP_SUMMARY"
           else
             ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/sortie/CoachUSCM-TEST.apk"
+            echo "### ⚠️ APK de test uniquement" >> "$GITHUB_STEP_SUMMARY"
+            echo "Les secrets ANDROID_* ne sont pas renseignés : cet APK ne pourra pas être mis à jour par-dessus. Ne l'envoyez pas aux coachs." >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: APK de test (installation directe)
+      - name: Artifact APK
         uses: actions/upload-artifact@v4
         with:
-          name: CoachUSCM-${{ env.VERSION_NAME }}-android-test
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-      - name: APK et AAB signés (Google Play)
+          name: CoachUSCM-${{ env.VERSION_NAME }}-Android
+          path: sortie/*.apk
+      - name: Release (lien de téléchargement fixe)
         if: env.KS_B64 != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION_NAME }}
+          name: Coach USCM ${{ env.VERSION_NAME }}
+          files: sortie/CoachUSCM.apk
+          make_latest: true
+          body: |
+            APK Android de Coach USCM, version ${{ env.VERSION_NAME }}.
+            Installation : ouvrir CoachUSCM.apk sur le téléphone et autoriser l'installation depuis cette source.
+            Une version déjà installée est mise à jour sans perte de données.
+
+  iphone:
+    name: iPhone (appli web installable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Construire
+        run: |
+          npm ci
+          npm run build:pwa
+      - name: Artifact (dossier à héberger)
         uses: actions/upload-artifact@v4
         with:
-          name: CoachUSCM-${{ env.VERSION_NAME }}-android-publication
-          path: |
-            android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/bundle/release/app-release.aab
+          name: CoachUSCM-${{ env.VERSION_NAME }}-iPhone-web
+          path: pwa/
+      - name: Préparer GitHub Pages
+        if: vars.PUBLIER_PAGES == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pwa/
 
-  ios:
-    name: iOS
+  pages:
+    name: Mise en ligne (GitHub Pages)
+    if: vars.PUBLIER_PAGES == 'true'
+    needs: iphone
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+      - run: |
+          echo "### 📱 Version iPhone en ligne" >> "$GITHUB_STEP_SUMMARY"
+          echo "Lien à envoyer aux coachs : ${{ steps.deploy.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+  ios-testflight:
+    name: iOS natif (TestFlight, option)
+    if: vars.IOS_TESTFLIGHT == 'true'
     runs-on: macos-15
     env:
       ASC_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
@@ -85,19 +146,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Installer et préparer l'appli web
+      - name: Installer et préparer l'appli
         run: |
           npm ci
           npm run build:web
           npx cap sync ios
-      - name: Vérifier la compilation (simulateur, sans signature)
-        if: env.ASC_KEY_P8 == ''
-        run: |
-          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -20
       - name: Archiver, signer et envoyer sur TestFlight
-        if: env.ASC_KEY_P8 != ''
         run: |
           KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
           printf '%s' "$ASC_KEY_P8" > "$KEY_PATH"

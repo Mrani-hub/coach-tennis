@@ -1,50 +1,38 @@
-# Coach USCM — applis Android et iOS
+# Coach USCM — Android et iPhone, en distribution directe
 
 Application de planification et de suivi des entraînements de tennis jeunes, pour un coach.
-Ce dossier contient le projet mobile complet (Capacitor 8). Il produit :
+Pas de Google Play ni d'App Store : l'appli est envoyée directement aux coachs.
 
-- une **appli Android** : APK à installer directement, et AAB pour Google Play ;
-- une **appli iOS** : envoyée sur TestFlight puis sur l'App Store.
+| Téléphone | Ce que reçoit le coach | Coût |
+|---|---|---|
+| **Android** | Un fichier `CoachUSCM.apk` (par WhatsApp, e-mail, ou un lien) qu'il installe en le touchant. | Gratuit |
+| **iPhone / iPad** | Un lien à ouvrir dans Safari, puis « Sur l'écran d'accueil ». L'appli s'installe avec son icône et marche sans connexion. | Gratuit |
 
-L'appli fonctionne **sans connexion** : bibliothèques PDF, lecteur de carnets de match et polices sont embarqués.
-Les données restent sur le téléphone du coach.
+Pourquoi deux méthodes : Apple n'autorise pas l'installation d'un fichier d'appli envoyé directement sur un iPhone, contrairement à Android. Le lien Safari est la seule voie gratuite et sans compte Apple. La version iOS « native » reste possible par TestFlight (voir la fin), avec le compte Apple Developer à 99 USD par an.
 
-## Ce que la version mobile ajoute
+Dans les deux cas, les données restent sur le téléphone du coach et l'appli fonctionne hors connexion.
 
-| Fonction | Détail |
-|---|---|
-| Stockage durable | Les données sont gardées dans le stockage natif du téléphone, en plus de la mémoire de la page. |
-| Partage de fichiers | La fiche PDF d'un joueur et la sauvegarde s'ouvrent dans la feuille de partage (WhatsApp, e-mail, Drive, Fichiers…). |
-| Rappels de séances | Notification avant chaque séance et cours collectif des 30 prochains jours (15 min à 2 h avant, au choix dans Réglages). |
-| Bouton retour Android | Ferme la fenêtre ouverte, puis revient à l'onglet Aujourd'hui, puis met l'appli en arrière-plan. |
-| Icône et écran de démarrage | Balle de tennis sur court vert, version claire et sombre. |
-| Encoches et barres système | Mise en page adaptée aux écrans bord à bord (Android 15+, iPhone à encoche). |
+### Différences entre les deux versions
 
-## Organisation du dossier
-
-```
-src/app.html          L'appli (le même fichier que la version web). C'est le seul fichier à modifier.
-src/native.js         Le pont avec le téléphone (stockage, partage, rappels, bouton retour).
-scripts/build-web.mjs Prépare le dossier www/ : copie les bibliothèques et les polices, adapte la page.
-scripts/draw-assets.py Dessine l'icône et l'écran de démarrage (sources dans assets/).
-android/              Projet Android Studio.
-ios/                  Projet Xcode.
-.github/workflows/    Compilation automatique sur GitHub.
-STORE.md              Textes prêts pour les fiches Google Play et App Store.
-```
-
-Identifiant de l'appli : `ma.uscm.coach` — nom affiché : **Coach USCM**.
+| | Android (APK) | iPhone (écran d'accueil) |
+|---|---|---|
+| Toutes les fonctions de l'appli | ✓ | ✓ |
+| Hors connexion | ✓ | ✓ (après la première ouverture) |
+| Fiche PDF et sauvegarde dans le menu de partage | ✓ | ✓ |
+| Rappels avant les séances (notifications) | ✓ | — |
+| Bouton retour du téléphone | ✓ | — (pas de bouton retour sur iPhone) |
+| Mises à jour | Envoyer le nouvel APK | Automatiques à l'ouverture |
 
 ---
 
-## Méthode 1 (recommandée) : compilation automatique sur GitHub
-
-Aucune installation sur votre ordinateur. GitHub compile Android sur Linux et iOS sur Mac, gratuitement pour un dépôt privé dans la limite du quota mensuel.
+## Mise en place (une seule fois)
 
 ### 1. Mettre le projet sur GitHub
 
-1. Créez un compte sur github.com si besoin, puis un **nouveau dépôt privé** (par exemple `coach-uscm`).
-2. Envoyez le contenu de ce dossier dans le dépôt, sur la branche `main` :
+1. Créez un compte sur github.com, puis un **nouveau dépôt** nommé `coach-uscm`.
+   - **Public (recommandé)** : liens de téléchargement directs pour les coachs et mise en ligne automatique de la version iPhone. Le code est visible, mais il ne contient aucune donnée : les données des coachs restent sur leurs téléphones, et la clé de signature reste secrète.
+   - **Privé** : possible aussi, mais l'APK et la version iPhone sont alors à transmettre vous-même (voir plus bas).
+2. Envoyez le contenu de ce dossier sur la branche `main` :
    ```bash
    cd coach-uscm-mobile
    git init -b main
@@ -53,129 +41,104 @@ Aucune installation sur votre ordinateur. GitHub compile Android sur Linux et iO
    git remote add origin https://github.com/VOTRE-COMPTE/coach-uscm.git
    git push -u origin main
    ```
-   Vous pouvez aussi glisser les fichiers dans la page du dépôt (bouton « Add file » → « Upload files »).
+   Ou, sans ligne de commande : page du dépôt → « Add file » → « Upload files », glissez tous les fichiers et dossiers.
 
-### 2. Récupérer l'APK de test
+### 2. Ajouter la clé de signature Android
 
-1. Ouvrez l'onglet **Actions** du dépôt : la compilation « Compiler les applis » démarre seule (5 à 10 min).
-2. Ouvrez la compilation terminée, section **Artifacts** : téléchargez `CoachUSCM-1.0.x-android-test`.
-3. Dézippez, envoyez `app-debug.apk` sur le téléphone Android et ouvrez-le. Autorisez l'installation depuis cette source si le téléphone le demande.
+La clé `uscm-release.jks` et la fiche `CLE-ANDROID-A-GARDER.txt` vous ont été fournies **à part**. Elles garantissent que chaque nouvel APK s'installe par-dessus l'ancien **sans perte de données** chez les coachs.
 
-Cet APK suffit pour tester l'appli et la montrer aux coachs. Il n'est pas accepté par Google Play.
+Dépôt GitHub → **Settings → Secrets and variables → Actions → New repository secret**, créez les 4 secrets indiqués dans la fiche :
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 
-### 3. Signer pour Google Play
+> Gardez la clé et la fiche en deux exemplaires (clé USB + coffre en ligne). Si elles sont perdues, les coachs devront désinstaller l'appli pour installer une nouvelle version, et perdront leurs données.
 
-Créez **une seule fois** votre clé de signature (Java est fourni avec Android Studio) :
+### 3. Mettre en ligne la version iPhone (dépôt public)
 
-```bash
-keytool -genkeypair -v -keystore uscm-release.jks -alias coach-uscm \
-  -keyalg RSA -keysize 2048 -validity 10000
-```
+1. **Settings → Pages** : dans « Build and deployment », Source = **GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → onglet Variables → New repository variable** :
+   nom `PUBLIER_PAGES`, valeur `true`.
 
-> Gardez ce fichier `.jks` et ses mots de passe en lieu sûr (deux copies). Sans eux, impossible de publier une mise à jour de l'appli.
-> Si vous activez la « signature d'application par Google Play », cette clé devient la clé d'importation : Google peut la réinitialiser en cas de perte.
+L'adresse de la version iPhone sera : `https://VOTRE-COMPTE.github.io/coach-uscm/`
 
-Convertissez la clé en texte :
-- Linux / Mac : `base64 -w0 uscm-release.jks > cle.txt` (sur Mac : `base64 -i uscm-release.jks -o cle.txt`)
-- Windows (PowerShell) : `[Convert]::ToBase64String([IO.File]::ReadAllBytes("uscm-release.jks")) > cle.txt`
+### 4. Lancer la compilation
 
-Dans le dépôt GitHub : **Settings → Secrets and variables → Actions → New repository secret**, ajoutez :
-
-| Secret | Valeur |
-|---|---|
-| `ANDROID_KEYSTORE_BASE64` | le contenu de `cle.txt` |
-| `ANDROID_KEYSTORE_PASSWORD` | le mot de passe du fichier |
-| `ANDROID_KEY_ALIAS` | `coach-uscm` |
-| `ANDROID_KEY_PASSWORD` | le mot de passe de la clé |
-
-Relancez la compilation (Actions → Compiler les applis → **Run workflow**). Un second artifact `…-android-publication` contient alors `app-release.aab` (pour Google Play) et `app-release.apk` (signé).
-
-### 4. Publier sur Google Play
-
-1. Dans la Google Play Console, créez l'application « Coach USCM » (langue par défaut : français).
-2. Importez `app-release.aab` d'abord en **test interne** (vous et quelques coachs), puis en production.
-3. Remplissez la fiche avec les textes de `STORE.md`, les captures d'écran et l'icône 512 px (`assets/icon-only.png` réduit).
-4. Section « Sécurité des données » : l'appli **ne collecte et ne partage aucune donnée** (tout reste sur l'appareil).
-5. Public cible : coachs adultes (l'appli n'est pas destinée aux enfants, même si elle parle de joueurs jeunes).
-
-Chaque nouvel envoi sur `main` produit une version au numéro supérieur (1.0.1, 1.0.2…), acceptée directement par Google Play.
-
-### 5. iOS : TestFlight puis App Store
-
-Prérequis : un compte **Apple Developer Program** (99 USD par an).
-
-1. Sur developer.apple.com → *Identifiers*, enregistrez l'identifiant `ma.uscm.coach`.
-2. Sur App Store Connect → *Apps* → **+**, créez l'appli « Coach USCM » avec cet identifiant.
-3. Sur App Store Connect → *Utilisateurs et accès* → *Intégrations* → **Clés API App Store Connect**, créez une clé avec le rôle **Admin** (nécessaire pour que la signature se fasse toute seule). Téléchargez le fichier `AuthKey_XXXX.p8` (une seule fois possible).
-4. Dans GitHub, ajoutez les secrets :
-
-| Secret | Valeur |
-|---|---|
-| `APPLE_API_KEY_P8` | tout le contenu du fichier `.p8` (lignes BEGIN et END comprises) |
-| `APPLE_API_KEY_ID` | l'identifiant de la clé (10 caractères) |
-| `APPLE_API_ISSUER_ID` | l'« Issuer ID » affiché au-dessus de la liste des clés |
-| `APPLE_TEAM_ID` | votre Team ID (developer.apple.com → Membership) |
-
-5. Relancez la compilation. La version iOS arrive dans **TestFlight** sous 15 à 30 min. Installez l'appli TestFlight sur l'iPhone pour la tester et invitez des coachs par e-mail.
-6. Quand tout est bon, soumettez la version à la revue Apple depuis App Store Connect, avec les textes de `STORE.md`.
-
-Sans les secrets Apple, la compilation iOS vérifie seulement que le projet compile.
+Onglet **Actions** → « Compiler les applis » → **Run workflow** (elle se lance aussi à chaque envoi sur `main`). Comptez 5 à 10 minutes. Le résumé de la compilation indique où trouver chaque fichier.
 
 ---
 
-## Méthode 2 : compiler sur votre ordinateur
+## Envoyer l'appli aux coachs
 
-Prérequis communs : **Node.js 22** ou plus récent.
+### Android
 
-```bash
-cd coach-uscm-mobile
-npm ci
-```
+- **Dépôt public** : envoyez ce lien, qui donne toujours la dernière version :
+  `https://github.com/VOTRE-COMPTE/coach-uscm/releases/latest/download/CoachUSCM.apk`
+- **Dépôt privé** : téléchargez l'artifact `CoachUSCM-1.0.x-Android` dans la compilation terminée, dézippez-le et envoyez `CoachUSCM.apk` par WhatsApp ou e-mail.
 
-**Android** (Windows, Mac ou Linux) : installez **Android Studio** (version récente, avec le SDK Android 36), puis :
+### iPhone
 
-```bash
-npm run android
-```
+- **Dépôt public** : envoyez le lien `https://VOTRE-COMPTE.github.io/coach-uscm/`.
+- **Dépôt privé** : téléchargez l'artifact `CoachUSCM-1.0.x-iPhone-web`, dézippez-le, puis glissez le dossier sur **app.netlify.com/drop** (gratuit). Netlify donne un lien en `https://….netlify.app` à envoyer aux coachs. Pour une mise à jour, glissez le nouveau dossier sur le même site Netlify.
 
-Android Studio s'ouvre : bouton ▶ pour lancer sur un téléphone branché en USB (mode développeur activé) ou un émulateur.
-Pour Google Play : *Build → Generate Signed App Bundle / APK*.
-Vous pouvez aussi créer `android/keystore.properties` (jamais envoyé sur GitHub) :
-
-```
-storeFile=/chemin/vers/uscm-release.jks
-storePassword=...
-keyAlias=coach-uscm
-keyPassword=...
-```
-
-**iOS** (Mac uniquement) : installez **Xcode** depuis l'App Store, puis :
-
-```bash
-npm run ios
-```
-
-Dans Xcode : cible *App* → *Signing & Capabilities* → choisissez votre équipe, puis ▶ sur un iPhone branché, ou *Product → Archive* pour l'App Store.
+Le texte d'installation à envoyer aux coachs est prêt dans `INSTALLATION-COACHS.md`.
 
 ---
 
 ## Mettre à jour l'appli
 
-1. Remplacez `src/app.html` par la nouvelle version du fichier web de l'appli.
-2. Envoyez sur GitHub (méthode 1) ou lancez `npm run sync` (méthode 2).
+1. Remplacez `src/app.html` par la nouvelle version du fichier de l'appli.
+2. Envoyez-le sur GitHub. La compilation repart et le numéro de version augmente (1.0.1, 1.0.2…).
+3. **Android** : envoyez le nouvel APK (le lien « latest » pointe déjà dessus). Les coachs l'installent par-dessus, leurs données sont gardées.
+   **iPhone** : rien à faire. L'appli se met à jour à la prochaine ouverture avec du réseau et affiche « Coach USCM a été mis à jour ».
 
-Le script `build-web.mjs` adapte la page automatiquement (bibliothèques locales, polices, marges des écrans). S'il ne reconnaît plus un élément attendu, il s'arrête avec un message clair au lieu de produire une appli incomplète.
+---
 
-Pour changer l'icône : modifiez `scripts/draw-assets.py` (ou remplacez les images de `assets/`), puis `npm run assets`.
+## Organisation du dossier
 
-## Passer les données de la version web au téléphone
+```
+src/app.html            L'appli (le même fichier que la version web). C'est le seul fichier à modifier.
+src/native.js           Le pont avec le téléphone Android/iOS (stockage, partage, rappels, bouton retour).
+scripts/build-web.mjs   Prépare l'appli : www/ pour Android/iOS natif, pwa/ pour l'iPhone via Safari (--pwa).
+scripts/draw-assets.py  Dessine l'icône et l'écran de démarrage (sources dans assets/).
+android/                Projet Android Studio.
+ios/                    Projet Xcode (pour l'option TestFlight).
+.github/workflows/      Compilation automatique.
+INSTALLATION-COACHS.md  Message d'installation à envoyer aux coachs.
+```
 
-1. Dans la version web : **Réglages → Exporter un fichier de sauvegarde** (ou « Copier la sauvegarde »).
-2. Envoyez le fichier sur le téléphone.
-3. Dans l'appli : **Réglages → Importer un fichier** (ou collez le texte puis « Restaurer »).
+Identifiant de l'appli : `ma.uscm.coach` — nom affiché : **Coach USCM**.
 
-Le même chemin sert à changer de téléphone. Pensez à exporter une sauvegarde régulièrement.
+## Compiler l'APK sur votre ordinateur (sans GitHub)
+
+Prérequis : **Node.js 22** et **Android Studio** récent (SDK Android 36).
+
+1. Copiez `uscm-release.jks` dans le dossier `android/`, puis créez `android/keystore.properties` (ce fichier n'est jamais envoyé sur GitHub) :
+   ```
+   storeFile=uscm-release.jks
+   storePassword=LE_MOT_DE_PASSE
+   keyAlias=coach-uscm
+   keyPassword=LE_MOT_DE_PASSE
+   ```
+2. Puis :
+   ```bash
+   npm ci
+   npm run sync
+   cd android
+   ./gradlew assembleRelease        (Windows : gradlew.bat assembleRelease)
+   ```
+3. L'APK est dans `android/app/build/outputs/apk/release/app-release.apk`.
+
+Pour la version iPhone : `npm run build:pwa`, puis hébergez le dossier `pwa/` (Netlify Drop, GitHub Pages…). Elle doit être servie en `https://` pour fonctionner hors ligne.
+
+## Option : vraie appli iOS par TestFlight
+
+Si un jour vous voulez les rappels de séances sur iPhone, il faut l'appli iOS native. Sans App Store, la seule voie est **TestFlight** : jusqu'à 10 000 testeurs invités par e-mail ou par lien public. Chaque version reste valable 90 jours, puis il faut en envoyer une nouvelle.
+
+1. Compte **Apple Developer Program** (99 USD par an).
+2. developer.apple.com → *Identifiers* : enregistrez `ma.uscm.coach`. App Store Connect → *Apps* → **+** : créez « Coach USCM ».
+3. App Store Connect → *Utilisateurs et accès* → *Intégrations* → **Clés API** : créez une clé au rôle **Admin**, téléchargez le fichier `.p8`.
+4. Secrets GitHub : `APPLE_API_KEY_P8` (contenu du fichier `.p8`), `APPLE_API_KEY_ID`, `APPLE_API_ISSUER_ID`, `APPLE_TEAM_ID`. Variable : `IOS_TESTFLIGHT` = `true`.
+5. La compilation envoie alors chaque version sur TestFlight. Pour les testeurs externes, Apple fait une vérification rapide de la première version.
 
 ## Versions utilisées
 
-Capacitor 8.5.3 · Android : SDK 36, minimum Android 7 (API 24), Gradle 8.14, Java 21 · iOS : minimum iOS 15, Swift Package Manager · jsPDF 2.5.1 · pdf.js 3.11.174.
+Capacitor 8.5.3 · Android : SDK 36, minimum Android 7 (API 24), Gradle 8.14, Java 21 · iOS natif : minimum iOS 15 · iPhone via Safari : iOS 16.4 ou plus récent conseillé · jsPDF 2.5.1 · pdf.js 3.11.174.

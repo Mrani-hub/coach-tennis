@@ -4,3 +4,4 @@ android/keystore.properties
 *.jks
 *.keystore
 .DS_Store
+pwa/
