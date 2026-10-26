@@ -7,6 +7,7 @@ import { App } from '@capacitor/app';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { SocialLogin } from '@capgo/capacitor-social-login';
+import { BackgroundRunner } from '@capacitor/background-runner';
 
 const KEY = 'uscm-coach-v1';
 const toB64 = async data => {
@@ -61,6 +62,11 @@ const Native = {
     } catch (e) {}
   },
   hideSplash() { SplashScreen.hide().catch(() => {}); },
+
+  /* Vérification du programme en arrière-plan (joueur) */
+  bgConfigurer(details) {
+    BackgroundRunner.dispatchEvent({ label: 'ma.coachtennis.app.verification', event: 'configurer', details }).catch(() => {});
+  },
 
   /* Petites valeurs durables (mode coach/joueur, programmes suivis par un joueur) */
   async kvGet(key) { try { return (await Preferences.get({ key })).value; } catch (e) { return null; } },

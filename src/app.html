@@ -252,6 +252,17 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .jday-h{font-size:14px;color:var(--muted);padding-top:4px}
 .jth{display:flex;gap:4px;flex-wrap:wrap}
 .ev.jbig .t-name{font-size:17px}
+.jlock{padding-block:28px}
+.pinf{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%}
+.pinf .fl{width:170px}
+.pinf input{font-size:24px;letter-spacing:.4em;text-align:center;font-variant-numeric:tabular-nums}
+.jlock .seg{justify-content:center}
+.jnew{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:var(--r);background:var(--ball);color:var(--ball-ink);font-size:14px}
+.jnew b{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.05em}
+.jnew .btn{background:var(--ball-ink);color:var(--ball);border-color:var(--ball-ink)}
+.jconf{display:flex;flex-direction:column;gap:8px;border-color:var(--clay)}
+.jrep{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.jrep .btn{flex:1 1 auto}
 .recap{font-size:14px;padding:8px 10px;border-left:3px solid var(--court);background:var(--surface-2);border-radius:0 6px 6px 0}
 .bar .tr{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
 .bar .tr i{display:block;height:100%;background:var(--court)}
@@ -541,7 +552,10 @@ function go(tab){UI.tab=tab;try{sessionStorage.setItem('uscm-tab',tab)}catch(e){
 function render(){
   const qa=document.getElementById('quickAdd');
   if(!APPMODE){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Entraînements tennis jeunes';qa.hidden=true;renderTabs();document.getElementById('app').innerHTML=vAccueil();return}
-  if(APPMODE==='joueur'){const {sel,list}=srcSel();
+  if(APPMODE==='joueur'){const lock=jVerrou();
+    if(lock){document.getElementById('hTitle').textContent='Coach Tennis';document.getElementById('hSub').textContent='Espace joueur';qa.hidden=true;document.querySelector('nav.tabs').hidden=true;document.getElementById('app').innerHTML=lock;
+      const fi=$('jPinIn')||$('pinN1');if(fi&&!fi.disabled&&!window.Native)setTimeout(()=>fi.focus(),50);return}
+    const {sel,list}=srcSel();
     document.getElementById('hTitle').textContent=sel||'Espace joueur';
     document.getElementById('hSub').textContent=sel?`Espace joueur · ${list[0].data.coach.club||''}`:'Coach Tennis';
     qa.hidden=!PJ.sources.length;qa.disabled=false;qa.textContent='Actualiser';
@@ -556,8 +570,8 @@ function render(){
 }
 function evCard(e,compact){
   const sub=e.type==='ind'
-    ? `<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.ref.statut!=='planifiee'?` <span class="chip st-${e.ref.statut}">${STATUTS[e.ref.statut]}</span>`:''}`
-    : `<span class="chip col">Collectif</span>${esc(e.court)} · ${e.ref.joueurIds.length} joueurs${e.off?` <span class="chip st-annulee">${e.conge?'Congé':'Annulé'}</span>`:''}`;
+    ? `<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.ref.statut!=='planifiee'?` <span class="chip st-${e.ref.statut}">${STATUTS[e.ref.statut]}</span>`:e.date>=today()?' '+repChipC(repCoach(e.ref.joueurId,e.id,e.date,e.debut)):''}`
+    : `<span class="chip col">Collectif</span>${esc(e.court)} · ${e.ref.joueurIds.length} joueurs${e.off?` <span class="chip st-annulee">${e.conge?'Congé':'Annulé'}</span>`:e.date>=today()?repResumeCol(e):''}`;
   const data=e.type==='ind'?`data-sid="${e.id}"`:`data-gkey="${esc(e.key)}"`;
   const flag=e.enConge?' <span class="chip conf">Pendant congé</span>':e.horsDispo?' <span class="chip hd">Hors dispo</span>':'';
   return `<button type="button" class="ev ${e.type} ${e.off?'off':''} ${e.conflits.length||e.enConge?'bad':''} ${e.horsDispo&&!e.enConge?'hd':''}" ${data}>
@@ -588,6 +602,7 @@ function vJour(){
         <div class="list" style="margin-top:8px;gap:6px">${x.ev.map(e=>evCard(e)).join('')}${freeBtns(x.d)}${!x.ev.length&&!freeSlots(x.d).length?'<div class="muted small">Rien de programmé.</div>':''}</div></div>`).join('')}
     </section>
     <aside class="list">
+      ${panneauReponses()}
       ${st.hors.length?`<div class="panel"><h3 style="color:var(--warn)">Hors disponibilité cette semaine</h3><div class="list" style="margin-top:8px">${st.hors.map(e=>`<div class="small"><b>${JC[dow(e.date)]} ${fmtShort(e.date)} ${e.debut}–${e.fin}</b> — ${esc(evTitle(e))} <span class="muted">(${dayStatus(e.date)})</span></div>`).join('')}</div></div>`:''}
       ${st.conflits.length?`<div class="panel"><h3 style="color:var(--danger)">Conflits cette semaine</h3><div class="list" style="margin-top:8px">${st.conflits.map(e=>`<div class="small"><b>${JC[dow(e.date)]} ${fmtShort(e.date)} ${e.debut}</b> — ${esc(evTitle(e))} chevauche ${e.conflits.map(c=>esc(evTitle(c))).join(', ')}</div>`).join('')}</div></div>`:''}
       <div class="panel"><h3>Sans séance depuis 14 jours</h3>
@@ -660,6 +675,7 @@ function vReglages(){
   <div class="panel f">
     <label class="fl">Prénom du coach<input id="sCoach" value="${esc(S.coach)}"></label>
     <label class="fl">Club<input id="sClub" value="${esc(S.club)}" placeholder="ex. USCM"></label>
+    <label class="fl">Votre téléphone (WhatsApp)<input id="sTel" type="tel" value="${esc(S.tel||'')}" placeholder="ex. 06 12 34 56 78"></label>
     <label class="fl full">Courts (séparés par des virgules)<input id="sCourts" value="${esc(S.courts.join(', '))}"></label>
     <label class="fl">Pays<input id="sPays" value="${esc(S.pays)}" list="paysL"><datalist id="paysL"><option value="Maroc"><option value="France"><option value="Belgique"><option value="Suisse"><option value="Tunisie"><option value="Algérie"><option value="Sénégal"><option value="Côte d’Ivoire"><option value="Canada"></datalist></label>
     <label class="fl">Sigle de l’instance de classement<input id="sSigle" value="${esc(S.instanceSigle)}" placeholder="ex. FRMT"></label>
@@ -882,6 +898,7 @@ function openSeance(id){
   <dl class="kv num"><dt>Date</dt><dd>${fmtDate(s.date)}</dd><dt>Horaire</dt><dd>${s.debut} – ${e.fin} (${s.duree} min)</dd><dt>Court</dt><dd>${esc(s.court)}</dd>
     <dt>Thèmes</dt><dd><span class="row" style="gap:4px">${thList(s).map(x=>`<span class="chip ind">${esc(x.t)} · ${x.w}% · ${Math.round(s.duree*x.w/100)} min</span>`).join('')}</span></dd>${p?`<dt>Catégorie</dt><dd>${categorie(p.naissance)} · ${esc(p.niveau)}</dd>`:''}</dl>
   ${e.conflits.length?`<div class="warnbox">Chevauche : ${e.conflits.map(c=>`${c.debut}–${c.fin} ${esc(evTitle(c))}`).join(', ')}</div>`:''}
+  ${(()=>{const r=repCoach(s.joueurId,s.id,s.date,s.debut);return r?`<div class="row" style="gap:6px"><b class="small">Réponse du joueur :</b> ${repChipC(r)}${r.m?` <span class="small muted">« ${esc(r.m)} »</span>`:''}</div>`:''})()}
   <div><h3 style="margin-bottom:6px">Statut</h3><div class="seg" id="stSeg">${Object.entries(STATUTS).map(([k,l])=>`<button type="button" data-st="${k}" aria-pressed="${s.statut===k}">${l}</button>`).join('')}</div></div>
   ${p?`<hr class="sep"><h2 style="font-size:22px">Fiche du joueur</h2>${ficheHtml(p,thList(s).map(x=>x.t))}
   <div><h3 style="margin-bottom:8px">Dernières séances</h3>${recents.length?`<div class="list" style="gap:6px">${recents.map(r=>`<div class="recap"><b class="num">${fmtShort(r.date)}</b> · ${esc(thTxt(r))}${r.notes?`<br><span class="small muted">${esc(r.notes)}</span>`:''}</div>`).join('')}</div>`:'<div class="muted small">Première séance faite avec ce joueur.</div>'}</div><hr class="sep">`:''}
@@ -903,7 +920,7 @@ function openCours(key){
   <dl class="kv num"><dt>École</dt><dd>${esc(ec?ec.nom:'—')}</dd><dt>Date</dt><dd>${fmtDate(date)}</dd><dt>Horaire</dt><dd>${debut} – ${e.fin} (${e.duree} min)</dd><dt>Court</dt><dd>${esc(e.court)}</dd><dt>Niveau</dt><dd>${esc(g.niveau||'—')}</dd></dl>
   ${e.conflits.length?`<div class="warnbox">Chevauche : ${e.conflits.map(c=>`${c.debut}–${c.fin} ${esc(evTitle(c))}`).join(', ')}</div>`:''}
   ${e.conge?'<div class="demo">Cours suspendu : vous êtes en congé à cette date.</div>':off?'<div class="demo">Ce cours est annulé pour cette date.</div>':`<div><h3 style="margin-bottom:6px">Présences <span class="small num" id="pc"></span></h3>
-    ${g.joueurIds.length?`<div class="checks" id="presL">${g.joueurIds.map(id=>{const p=S.joueurs.find(x=>x.id===id);return `<label><input type="checkbox" value="${id}" ${!pres||pres.includes(id)?'checked':''}>${esc(pName(p))}</label>`}).join('')}</div>`:'<div class="muted small">Aucun joueur inscrit dans ce groupe.</div>'}</div>`}
+    ${g.joueurIds.length?`<div class="checks" id="presL">${g.joueurIds.map(id=>{const p=S.joueurs.find(x=>x.id===id);const rr=repCoach(id,key,date,debut);return `<label><input type="checkbox" value="${id}" ${!pres||pres.includes(id)?'checked':''}>${esc(pName(p))} ${repChipC(rr)}</label>`}).join('')}</div>`:'<div class="muted small">Aucun joueur inscrit dans ce groupe.</div>'}</div>`}
   ${e.horsDispo?`<div class="warnbox" style="background:var(--warn-soft);color:var(--warn)">Ce créneau sort de vos disponibilités (${dayStatus(date)}).</div>`:''}
   <div class="row">${off||e.conge?'':'<button class="btn pri" type="button" id="cSave">Enregistrer les présences</button>'}
     ${e.conge?'':`<button class="btn ${off?'pri':'danger'}" type="button" id="cOff">${off?'Rétablir ce cours':'Annuler ce cours'}</button>`}
@@ -1458,17 +1475,31 @@ function payloadJoueur(p){
   const t=today(),gs=S.groupes.filter(g=>g.joueurIds.includes(p.id)),cours=[];
   for(let i=-21;i<=63;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.type!=='col'||!e.ref.joueurIds.includes(p.id))return;
     const ec=S.ecoles.find(x=>x.id===e.ref.ecoleId)||{},pr=S.presences[e.key];
-    cours.push({date:d,debut:e.debut,fin:e.fin,court:e.court,groupe:e.ref.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:e.ref.niveau||'',
+    cours.push({key:e.key,date:d,debut:e.debut,fin:e.fin,court:e.court,groupe:e.ref.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:e.ref.niveau||'',
       annule:!!e.off,motif:e.conge?'Congé du coach':e.off?'Cours annulé':'',present:pr?pr.includes(p.id):null})})}
   const {m,tot,n}=tauxThemes(p.id);
   return {app:'coach-uscm',type:'joueur',v:1,publie:new Date().toISOString(),
-    coach:{nom:S.coach||'',club:S.club||'',instance:instTxt()},
+    coach:{nom:S.coach||'',club:S.club||'',instance:instTxt(),tel:S.tel||''},
     joueur:{id:p.id,prenom:p.prenom,nom:p.nom,categorie:categorie(p.naissance),niveau:p.niveau,objectifs:p.notes||'',classements:p.classements||[]},
     themesCoach:CT(),niveaux:p.niveaux||{},evol:(p.evol||[]).slice(-30),externes:Object.fromEntries(THEMES.filter(x=>!isCT(x)).map(x=>[x,extLabel(p,x)])),
-    seances:S.seances.filter(s=>s.joueurId===p.id&&s.date>=addDays(t,-180)).map(s=>({date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
+    seances:S.seances.filter(s=>s.joueurId===p.id&&s.date>=addDays(t,-180)).map(s=>({id:s.id,date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
     cours,groupes:gs.map(g=>{const ec=S.ecoles.find(x=>x.id===g.ecoleId)||{};return {nom:g.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:g.niveau||'',creneaux:g.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court}))}}),
     conges:(S.conges||[]).filter(c=>c.fin>=t).map(c=>({debut:c.debut,fin:c.fin,motif:c.motif||''})),
     matchs:matchesOf(p.id).slice(0,20).map(({joueurId,...x})=>x),taux:{m,tot,n}}}
+
+/* ---- Changements à signaler au joueur ---- */
+function snapJoueur(p){const t=today(),m={};
+  S.seances.forEach(s=>{if(s.joueurId===p.id&&s.date>=t&&s.statut!=='annulee')m[s.id]=[s.date,s.debut,s.court,'i']});
+  for(let i=0;i<=63;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.type==='col'&&!e.off&&e.ref.joueurIds.includes(p.id))m[e.key]=[d,e.debut,e.court,'c',e.ref.nom]})}
+  return {m,end:addDays(t,63)}}
+function diffNotif(old,cur){const t=today(),nv=[],md=[],an=[];
+  Object.entries(cur.m).forEach(([k,v])=>{const o=old.m[k];if(!o){if(v[3]==='i'||v[0]<=old.end)nv.push(v)}else if(o[0]!==v[0]||o[1]!==v[1]||o[2]!==v[2])md.push(v)});
+  Object.entries(old.m).forEach(([k,o])=>{if(!cur.m[k]&&o[0]>=t)an.push(o)});
+  const tot=nv.length+md.length+an.length;if(!tot)return null;
+  const lab=v=>`${v[3]==='c'?v[4]+', ':''}${JC[dow(v[0])].toLowerCase()}. ${fmtShort(v[0])} à ${v[1]}`;
+  const [L,un,plus]=nv.length?[nv,'Nouvelle séance','nouvelles séances programmées']:md.length?[md,'Séance modifiée','séances modifiées']:[an,'Séance annulée','séances annulées'];
+  let txt=L.length===1?`${un} : ${lab(L[0])}`:`${L.length} ${plus}`;const autres=tot-L.length;if(autres)txt+=` (+${autres} changement${autres>1?'s':''})`;
+  const enc=new TextEncoder();while(enc.encode(txt).length>110)txt=txt.slice(0,-2)+'…';return txt}
 
 /* ---- Publication ---- */
 const partages=()=>S.joueurs.filter(p=>p.partage&&p.partage.actif);
@@ -1482,16 +1513,20 @@ async function publier(interactive=true,silencieux=false){
   try{
     const folder=await driveFolder(interactive);let n=0;
     for(const p of L){const P=p.partage;if(!P.key)P.key=newKey();
-      const txt=await chiffrer(P.key,payloadJoueur(p)),neuf=!P.fileId;
+      const cur=snapJoueur(p);if(!P.snap){P.rev=P.rev||1;P.notif='Ton programme est disponible'}else{const df=diffNotif(P.snap,cur);if(df){P.rev=(P.rev||1)+1;P.notif=df}}
+      const pl=payloadJoueur(p);pl.rev=P.rev;pl.notif=P.notif;
+      const txt=await chiffrer(P.key,pl),neuf=!P.fileId;
       P.fileId=await driveSave(P.fileId,`CoachTennis-joueur-${p.id}.json`,txt,'application/json',folder,interactive);
       if(neuf||!P.public){await gfetch(`${DAPI}/files/${P.fileId}/permissions?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})},interactive);P.public=true}
-      P.publie=new Date().toISOString();n++}
+      if(P.metaRev!==P.rev||neuf){await gfetch(`${DAPI}/files/${P.fileId}?fields=id`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({appProperties:{r:String(P.rev),n:P.notif}})},interactive);P.metaRev=P.rev}
+      P.snap=cur;P.publie=new Date().toISOString();n++}
     const D=S.drive;D.lastPublish=new Date().toISOString();D.dirty=false;
     D.backupId=await driveSave(D.backupId,'CoachTennis-sauvegarde.json',JSON.stringify(S),'application/json',folder,interactive);
     save(true);
     if(!silencieux)toast(n?`${n} programme${n>1?'s':''} publié${n>1?'s':''} sur Google Drive`:'Sauvegarde envoyée sur Google Drive');
     if(UI.tab==='reglages'||UI.tab==='jour')render();
     if(sheetEl&&UI.openPid){const pid=UI.openPid;closeSheet();openJoueur(pid)}
+    chargerReponses(true);
   }catch(e){if(!silencieux)toast(e.message||'Publication impossible')}
   finally{publishing=false;document.querySelectorAll('[data-publish]').forEach(b=>{b.disabled=false;if(b.dataset.l)b.textContent=b.dataset.l})}}
 async function restaurerDrive(){
@@ -1544,6 +1579,7 @@ function partageReglagesHtml(){
   return `<div class="panel list"><h3>Espace joueurs et Google Drive</h3>
     <p class="small muted" style="margin:0;max-width:65ch">Vos joueurs voient leur programme grâce à des fichiers chiffrés déposés sur votre Google Drive, dans le dossier « Coach Tennis ». Une sauvegarde complète de vos données y est aussi envoyée à chaque publication.</p>
     <div class="small">${n} joueur${n>1?'s':''} avec un espace actif · Dernière publication : <b>${D.lastPublish?fmtShort(D.lastPublish.slice(0,10))+' à '+D.lastPublish.slice(11,16):'jamais'}</b>${D.dirty&&n?' · <span style="color:var(--warn);font-weight:700">modifications à publier</span>':''}</div>
+    <div class="small">${CFG.relaisUrl?'✓ Confirmations des joueurs : actives (réponses rangées dans votre Google Sheets).':'Confirmations des joueurs : par WhatsApp vers votre numéro (relais Google non installé).'}</div>
     <div class="small">${conn?'✓ Connecté à Google : vos modifications sont publiées automatiquement pendant 50 minutes.':'Non connecté à Google.'}</div>
     <div class="row"><button class="btn pri" type="button" data-publish>Publier sur Google Drive</button><button class="btn" type="button" id="driveRestore">Restaurer depuis Google Drive</button></div>
     ${CFG.playerUrl?`<a class="small" href="${esc(CFG.playerUrl.replace(/#.*$/,'').replace(/\/?$/,'/'))}confidentialite.html" target="_blank" rel="noopener">Données et confidentialité</a>`:''}</div>`+pinPanel;
@@ -1586,18 +1622,18 @@ let jLoading=false;
 async function actualiserJ(silent){if(jLoading||!PJ.sources.length)return;jLoading=true;const b=$('quickAdd');if(b){b.disabled=true;b.textContent='…'}
   let ok=0,ko=0;
   for(const s of PJ.sources){try{await chargerSource(s);ok++}catch(e){s.err=e.message;ko++}}
-  jLoading=false;saveJ();render();if(!silent)toast(ko&&!ok?(navigator.onLine===false?'Hors connexion : dernier programme reçu affiché':'Mise à jour impossible'):ko?'Programme mis à jour en partie':'Programme à jour')}
+  jLoading=false;saveJ();render();bgConfig();envoyerReponses();if(!silent)toast(ko&&!ok?(navigator.onLine===false?'Hors connexion : dernier programme reçu affiché':'Mise à jour impossible'):ko?'Programme mis à jour en partie':'Programme à jour')}
 async function ajouterCode(txt,quiet){const c=parseCode(txt);if(!c){if(!quiet)toast('Ce lien ou ce code n’est pas reconnu');return false}
   if(PJ.sources.some(s=>s.code===c)){if(!quiet)toast('Ce programme est déjà suivi');return true}
   const s={code:c};try{await chargerSource(s)}catch(e){if(!quiet)toast(e.message);if(navigator.onLine!==false)return false;s.err='Hors connexion : le programme se chargera dès le retour du réseau.'}
-  PJ.sources.push(s);if(s.data)PJ.sel=nomJ(s.data);saveJ();if(!quiet)toast(s.data?`Programme de ${s.data.joueur.prenom} ajouté`:'Code enregistré');return true}
+  PJ.sources.push(s);if(s.data){PJ.sel=nomJ(s.data);UI.pinNom=PJ.sel;if(PJ.profils[PJ.sel]&&jUnlocked!==PJ.sel)jUnlocked=null}saveJ();bgConfig();if(!quiet)toast(s.data?`Programme de ${s.data.joueur.prenom} ajouté`:'Code enregistré');return true}
 const nomJ=d=>`${d.joueur.prenom} ${d.joueur.nom}`;
 function srcSel(){const ok=PJ.sources.filter(s=>s.data),noms=[...new Set(ok.map(s=>nomJ(s.data)))];
   const sel=noms.includes(PJ.sel)?PJ.sel:noms[0]||'';return {noms,sel,list:ok.filter(s=>nomJ(s.data)===sel)}}
 function agendaJ(list,from,to){const it=[];
   list.forEach(s=>{const d=s.data,c=d.coach.nom?`Coach ${d.coach.nom}`:'Coach';
-    d.seances.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'ind',date:x.date,debut:x.debut,fin:fromMin(toMin(x.debut)+x.duree),duree:x.duree,court:x.court,themes:x.themes,statut:x.statut,notes:x.notes,coach:c})});
-    d.cours.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'col',...x,coach:c})})});
+    d.seances.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'ind',src:s,key:x.id||`${x.date}|${x.debut}`,date:x.date,debut:x.debut,fin:fromMin(toMin(x.debut)+x.duree),duree:x.duree,court:x.court,themes:x.themes,statut:x.statut,notes:x.notes,coach:c})});
+    d.cours.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'col',...x,src:s,key:x.key||`${x.groupe}|${x.date}|${x.debut}`,coach:c})})});
   return it.sort((a,b)=>(a.date+a.debut).localeCompare(b.date+b.debut))}
 function jEv(e,big){
   const sub=e.type==='ind'?`<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(e.coach)}`:`<span class="chip col">Collectif</span>${esc(e.ecole||'')}${e.lieu?' · '+esc(e.lieu):''} · ${esc(e.court)}`;
@@ -1605,7 +1641,7 @@ function jEv(e,big){
   const th=e.type==='ind'?`<span class="jth">${e.themes.map(x=>`<span class="chip">${esc(x.t)}${e.themes.length>1?' '+x.w+' %':''}</span>`).join('')}</span>`:(e.niveau?`<span class="small muted">${esc(e.niveau)}</span>`:'');
   return `<div class="ev ${e.type} ${off?'off':''} ${big?'jbig':''}" style="cursor:default"><span class="t-time num">${e.debut}<i>${e.fin}</i></span>
     <span class="t-name">${esc(e.type==='ind'?'Séance individuelle':e.groupe)}${off?` <span class="chip st-annulee">${esc(e.motif||'Annulé')}</span>`:''}</span>
-    <span class="t-sub">${sub}</span>${th?`<span></span><span class="t-sub">${th}</span>`:''}</div>`}
+    <span class="t-sub">${sub}</span>${th?`<span></span><span class="t-sub">${th}</span>`:''}${!off&&e.date>=today()&&repJ(e)?`<span></span><span class="t-sub">${repChipJ(e)}</span>`:''}</div>`}
 function jHeader(){const {noms,sel,list}=srcSel();
   return `${noms.length>1?`<div class="seg">${noms.map(n=>`<button type="button" data-jsel="${esc(n)}" aria-pressed="${n===sel}">${esc(n.split(' ')[0])}</button>`).join('')}</div>`:''}
   ${list.length?`<div class="small muted">Programme publié par ${list.map(s=>`${esc(s.data.coach.nom?'Coach '+s.data.coach.nom:'le coach')} le ${fmtShort(s.data.publie.slice(0,10))}`).join(' · ')}${list.some(s=>s.err)?` · <span style="color:var(--warn)">${esc(list.find(s=>s.err).err)}</span>`:''}</div>`:''}`}
@@ -1616,9 +1652,12 @@ function vJProg(){
   const cg=[].concat(...list.map(s=>s.data.conges.map(c=>({...c,coach:s.data.coach.nom})))).filter(c=>c.debut<=addDays(t,21));
   const days={};ag.forEach(e=>(days[e.date]=days[e.date]||[]).push(e));
   const gs=[].concat(...list.map(s=>s.data.groupes));
-  return `${jHeader()}
+  const ar=aRepondre(list),todo=ar.filter(e=>{const r=repJ(e);return !r||r.modifie});UI.jitems=ar;
+  return `${jHeader()}${bandeauNouveau(list)}
+  ${todo.length?`<section class="list"><h3>À confirmer <span class="chip prio">${todo.length}</span></h3><p class="small muted" style="margin:0">Indique à ton coach si tu seras là.</p>
+    ${todo.map(e=>`<div class="panel jconf"><div class="jdate" style="font-size:16px">${e.date===t?'Aujourd’hui':e.date===addDays(t,1)?'Demain':fmtDate(e.date)}</div>${jEv(e)}${repBtns(e,ar.indexOf(e))}</div>`).join('')}</section>`:''}
   ${cg.map(c=>`<div class="demo">Coach ${esc(c.coach||'')} absent du ${fmtShort(c.debut)} au ${fmtShort(c.fin)}${c.motif?` (${esc(c.motif)})`:''} : pas d’entraînement avec lui sur cette période.</div>`).join('')}
-  ${next?`<section class="list"><h3>Prochain entraînement</h3><div class="panel jnext"><div class="jdate">${next.date===t?'Aujourd’hui':next.date===addDays(t,1)?'Demain':fmtDate(next.date)}</div>${jEv(next,true)}</div></section>`:''}
+  ${next?`<section class="list"><h3>Prochain entraînement</h3><div class="panel jnext"><div class="jdate">${next.date===t?'Aujourd’hui':next.date===addDays(t,1)?'Demain':fmtDate(next.date)}</div>${jEv(next,true)}${ar.includes(next)?repBtns(next,ar.indexOf(next)):''}</div></section>`:''}
   <section class="list"><h3>Les 4 prochaines semaines</h3>
     ${Object.keys(days).length?Object.entries(days).map(([d,L])=>`<div class="jday"><div class="jday-h"><b>${d===t?'Aujourd’hui':fmtDate(d)}</b></div>${L.map(e=>jEv(e)).join('')}</div>`).join(''):'<div class="empty">Aucun entraînement prévu pour l’instant.</div>'}</section>
   ${gs.length?`<section class="list"><h3>Mes cours collectifs</h3>${gs.map(g=>`<div class="panel"><b>${esc(g.nom)}</b> <span class="small muted">${esc(g.ecole)}${g.lieu?' · '+esc(g.lieu):''}${g.niveau?' · '+esc(g.niveau):''}</span><div class="slots">${g.creneaux.map(c=>`<span class="slot num">${JOURS[c.jour]} ${c.debut}–${fromMin(toMin(c.debut)+c.duree)} · ${esc(c.court)}</span>`).join('')}</div></div>`).join('')}</section>`:''}`}
@@ -1665,6 +1704,9 @@ function vJReglages(){
     <p class="small muted" style="margin:0">Un joueur suivi par deux coachs (école et individuel) peut ajouter les deux liens. Un parent peut suivre plusieurs enfants.</p></div>
   ${window.Native?`<div class="panel list"><h3>Rappels</h3><div class="row"><label class="dday"><input type="checkbox" id="jrOn" ${PJ.rappels.on?'checked':''}><b>Me prévenir avant chaque entraînement</b></label>
     <label class="fl" style="flex-direction:row;align-items:center;gap:8px"><select id="jrAv">${opts([[30,'30 min'],[60,'1 h'],[120,'2 h'],[1440,'la veille']],PJ.rappels.avant)}</select>avant</label></div><span id="jrMsg" class="small muted"></span></div>`:''}
+  ${jUnlocked?`<div class="panel list"><h3>Mon compte</h3><div class="small">Connecté : <b>${esc(jUnlocked)}</b></div>
+    <div class="row"><button class="btn pri" type="button" id="jLock">Se déconnecter</button><button class="btn" type="button" id="jPinChange">Changer mon code PIN</button></div>
+    ${CFG.relaisUrl?'':'<p class="small muted" style="margin:0">Tes réponses (présent / absent) sont envoyées à ton coach par WhatsApp.</p>'}</div>`:''}
   <div class="panel list"><h3>Espace coach</h3><p class="small muted" style="margin:0">Pour les coachs qui utilisent cet appareil.</p><div><button class="btn" type="button" id="toCoach">Passer à l’espace coach</button></div></div>`}
 function vJVide(){return `<div class="welcome" style="padding-block:24px"><h2>Ton programme d’entraînement</h2>
   <p class="muted" style="margin:0;max-width:46ch">Ouvre le lien envoyé par ton coach, ou colle-le ici.</p>
@@ -1677,6 +1719,113 @@ function itemsRappelsJ(){const r=PJ.rappels||{};if(!r.on)return [];const {list}=
     items.push({key:`${e.type}|${e.date}|${e.debut}|${e.groupe||''}`,at,title:`${e.debut} · ${e.type==='ind'?'Séance individuelle':e.groupe}`,body:e.type==='ind'?`${e.court} · ${e.themes.map(x=>x.t).join(', ')} · ${e.coach}`:`${e.ecole||''} · ${e.court}`})});
   return items.sort((a,b)=>a.at-b.at).slice(0,60)}
 
+/* ============ Joueur : connexion par PIN, nouveautés, confirmations ============ */
+PJ.profils=PJ.profils||{};PJ.rep=PJ.rep||{};PJ.vu=PJ.vu||{};PJ.essais=PJ.essais||{n:0,t:0};
+let jUnlocked=null,jPaused=0;
+async function hashPin(pin,salt){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);
+  return b64u(new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:ub64u(salt),iterations:120000},k,256)))}
+const profilsJ=()=>[...new Set(PJ.sources.filter(s=>s.data).map(s=>nomJ(s.data)))];
+const fileOf=src=>src.code.split('.')[0];
+function jVerrou(){const noms=profilsJ();if(!noms.length)return null;
+  const sansPin=noms.find(n=>!PJ.profils[n]);if(sansPin)return vJCreerPin(sansPin);
+  if(jUnlocked&&noms.includes(jUnlocked)){PJ.sel=jUnlocked;return null}
+  return vJConnexion(noms)}
+function vJCreerPin(nom){UI.pinNom=nom;const pr=nom.split(' ')[0];
+  return `<div class="welcome jlock"><span class="ball big" aria-hidden="true"></span><h2>Bienvenue ${esc(pr)} !</h2>
+  <p class="muted" style="margin:0;max-width:44ch">Choisis ton code PIN personnel (4 à 6 chiffres). Il te sera demandé à chaque ouverture de l’appli.</p>
+  <div class="pinf"><label class="fl">Code PIN<input id="pinN1" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6"></label>
+  <label class="fl">Confirme ton code<input id="pinN2" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6"></label></div>
+  <div id="pinW"></div><button class="btn pri" type="button" id="jPinCreate">Valider mon code</button>
+  <p class="small muted" style="margin:0;max-width:44ch">Code oublié un jour ? Il suffira de rouvrir le lien envoyé par ton coach pour en choisir un nouveau.</p></div>`}
+function vJConnexion(noms){const sel=noms.includes(UI.pinNom)?UI.pinNom:noms.includes(PJ.sel)?PJ.sel:noms[0];UI.pinNom=sel;
+  const att=PJ.essais.t>Date.now()?Math.ceil((PJ.essais.t-Date.now())/1000):0;
+  return `<div class="welcome jlock"><span class="ball big" aria-hidden="true"></span><h2>Connexion joueur</h2>
+  ${noms.length>1?`<div class="seg">${noms.map(n=>`<button type="button" data-jprof="${esc(n)}" aria-pressed="${n===sel}">${esc(n)}</button>`).join('')}</div>`:`<p class="muted" style="margin:0"><b>${esc(sel)}</b></p>`}
+  <div class="pinf"><label class="fl">Ton code PIN<input id="jPinIn" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" ${att?'disabled':''}></label></div>
+  <div id="pinW">${att?`<div class="warnbox">Trop d’essais : réessaie dans ${att} s.</div>`:''}</div>
+  <button class="btn pri" type="button" id="jPinOk" ${att?'disabled':''}>Entrer</button>
+  <button class="btn ghost small" type="button" id="jPinForgot">Code oublié ?</button>
+  <div id="jForgot" hidden class="list" style="width:100%;max-width:420px;gap:8px"><p class="small muted" style="margin:0">Colle le lien (ou le code) envoyé par ton coach : tu pourras choisir un nouveau code.</p>
+    <input id="jForgotCode" class="search" placeholder="https://…#j=…  ou  code"><button class="btn" type="button" id="jForgotOk">Choisir un nouveau code</button></div>
+  <div style="margin-top:12px"><button class="btn ghost small" type="button" id="toCoach">Espace coach</button></div></div>`}
+async function creerPin(){const a=$('pinN1').value,b=$('pinN2').value;
+  if(!/^\d{4,6}$/.test(a)){$('pinW').innerHTML='<div class="warnbox">Le code doit contenir 4 à 6 chiffres.</div>';return}
+  if(a!==b){$('pinW').innerHTML='<div class="warnbox">Les deux codes sont différents.</div>';return}
+  const salt=b64u(crypto.getRandomValues(new Uint8Array(16)));PJ.profils[UI.pinNom]={salt,h:await hashPin(a,salt)};
+  jUnlocked=UI.pinNom;PJ.sel=UI.pinNom;PJ.essais={n:0,t:0};marquerVus(true);saveJ();
+  if(window.Native)Native.notifPermission(true).then(()=>bgConfig());
+  render();toast('Code enregistré')}
+async function verifierPin(){const nom=UI.pinNom,p=PJ.profils[nom],v=$('jPinIn').value;if(!p||!v)return;
+  if(PJ.essais.t>Date.now())return;
+  if(await hashPin(v,p.salt)===p.h){jUnlocked=nom;PJ.sel=nom;PJ.essais={n:0,t:0};saveJ();render();if(navigator.onLine!==false)actualiserJ(true);return}
+  PJ.essais.n++;if(PJ.essais.n>=5)PJ.essais.t=Date.now()+30000*Math.pow(2,Math.min(PJ.essais.n-5,5));saveJ();
+  if(PJ.essais.t>Date.now()){render();setTimeout(()=>{if(!jUnlocked)render()},PJ.essais.t-Date.now()+200);return}
+  $('pinW').innerHTML=`<div class="warnbox">Code incorrect${PJ.essais.n>=3?` (${5-PJ.essais.n} essai${5-PJ.essais.n>1?'s':''} avant une pause)`:''}.</div>`;$('jPinIn').value='';$('jPinIn').focus()}
+function oubliPin(){const c=parseCode($('jForgotCode').value),nom=UI.pinNom;
+  const ok=c&&PJ.sources.some(s=>s.code===c&&s.data&&nomJ(s.data)===nom);
+  if(!ok){toast('Ce lien ne correspond pas à ce joueur');return}
+  delete PJ.profils[nom];PJ.essais={n:0,t:0};saveJ();render()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){jPaused=Date.now();return}
+  if(APPMODE==='joueur'&&jUnlocked&&Date.now()-jPaused>5*60000){jUnlocked=null;closeSheet();render()}
+  else if(APPMODE==='joueur'&&jUnlocked&&navigator.onLine!==false&&Date.now()-jPaused>60000)actualiserJ(true);
+  if(APPMODE==='coach'&&Date.now()-jPaused>60000)chargerReponses(true)});
+
+/* ---- Nouveautés et confirmations ---- */
+const repSig=e=>`${e.date} ${e.debut}`;
+function aRepondre(list){const t=today(),lim=addDays(t,7),nowH=new Date().toTimeString().slice(0,5);
+  return agendaJ(list,t,addDays(t,27)).filter(e=>{if(e.type==='col'?e.annule:e.statut!=='planifiee')return false;if(e.type==='col'&&e.date>lim)return false;if(e.date===t&&e.fin<nowH)return false;return true})}
+function repJ(e){const r=PJ.rep[`${fileOf(e.src)}|${e.key}`];if(!r)return null;return {...r,modifie:r.sig!==repSig(e)}}
+function marquerVus(silent){PJ.sources.filter(s=>s.data).forEach(s=>{PJ.vu[fileOf(s)]=s.data.rev||0});if(!silent)saveJ()}
+function bandeauNouveau(list){const L=list.filter(s=>(s.data.rev||0)>(PJ.vu[fileOf(s)]||0));if(!L.length)return '';
+  return `<div class="jnew"><b>Nouveau</b><span>${L.map(s=>esc(s.data.notif||'Ton coach a mis à jour ton programme')).join('<br>')}</span><button class="btn" type="button" data-jvu>OK</button></div>`}
+function repChipJ(e){const r=repJ(e);if(!r)return '';
+  if(r.modifie)return '<span class="chip mmixte">Horaire modifié : à reconfirmer</span>';
+  return r.st==='ok'?`<span class="chip mfort">✓ Présent${r.sent===false?' · envoi en attente':''}</span>`:`<span class="chip mfaible">✗ Absent${r.sent===false?' · envoi en attente':''}</span>`}
+function repBtns(e,i){const r=repJ(e);
+  return `<div class="jrep">${r&&!r.modifie?repChipJ(e)+`<button class="btn ghost small" type="button" data-jrep="chg|${i}">Changer</button>`:
+    `<button class="btn pri" type="button" data-jrep="ok|${i}">Je serai présent</button><button class="btn" type="button" data-jrep="non|${i}">Je ne peux pas</button>`}</div>`}
+const waNum=tel=>{let d=String(tel||'').replace(/[^\d+]/g,'');if(d.startsWith('+'))return d.slice(1);if(d.startsWith('00'))return d.slice(2);if(/^0\d{9}$/.test(d))return '212'+d.slice(1);return d};
+function texteRep(e,st,msg){const qui=e.src.data.joueur.prenom,quoi=e.type==='ind'?'la séance individuelle':`le cours ${e.groupe}`;
+  return `${qui} : ${st==='ok'?'✅ je serai présent à':'❌ je ne pourrai pas venir à'} ${quoi} du ${fmtDate(e.date)} à ${e.debut}${msg?` — ${msg}`:''}`}
+function repondre(e,st,msg){
+  PJ.rep[`${fileOf(e.src)}|${e.key}`]={st,msg:msg||'',ts:new Date().toISOString(),sig:repSig(e),sent:!CFG.relaisUrl?'wa':false};saveJ();
+  if(!CFG.relaisUrl){const n=waNum(e.src.data.coach.tel);const a=document.createElement('a');a.href=`https://wa.me/${n}?text=${encodeURIComponent(texteRep(e,st,msg))}`;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
+  closeSheet();render();if(CFG.relaisUrl)envoyerReponses().then(n=>toast(n===0?'Réponse envoyée au coach':'Réponse enregistrée : elle partira dès le retour du réseau'))}
+let repSending=false;
+async function envoyerReponses(){if(!CFG.relaisUrl||repSending)return 0;repSending=true;let ko=0;
+  for(const [k,r] of Object.entries(PJ.rep)){if(r.sent!==false)continue;const [f,...s]=k.split('|');
+    try{const res=await fetch(CFG.relaisUrl,{method:'POST',body:JSON.stringify({f,s:s.join('|'),st:r.st,msg:r.msg,g:r.sig})});const j=await res.json();if(j.ok)r.sent=true;else ko++}catch(e){ko++}}
+  repSending=false;saveJ();if(APPMODE==='joueur'&&jUnlocked)render();return ko}
+function formAbsence(e){openSheet(`${head('Je ne peux pas venir')}<p class="small muted" style="margin:0">${e.type==='ind'?'Séance individuelle':esc(e.groupe)} · ${fmtDate(e.date)} à ${e.debut}</p>
+  <label class="fl">Message pour ton coach (facultatif)<textarea id="absMsg" maxlength="300" placeholder="ex. compétition ce jour-là, malade…"></textarea></label>
+  <div class="row"><button class="btn pri" type="button" id="absOk">Prévenir mon coach</button><button class="btn" type="button" data-close>Annuler</button></div>`);
+  $('absOk').onclick=()=>repondre(e,'non',$('absMsg').value.trim())}
+function bgConfig(){if(!window.Native||!Native.bgConfigurer||!CFG.googleApiKey)return;
+  Native.bgConfigurer({key:CFG.googleApiKey,list:PJ.sources.filter(s=>s.data).map(s=>({f:fileOf(s),r:s.data.rev||0,prenom:s.data.joueur.prenom}))})}
+
+/* ---- Côté coach : réponses des joueurs ---- */
+let repLoading=false;
+async function chargerReponses(quiet){if(!CFG.relaisUrl||repLoading||navigator.onLine===false)return;const L=partages().filter(p=>p.partage.fileId);if(!L.length)return;repLoading=true;
+  try{const r=await fetch(`${CFG.relaisUrl}${CFG.relaisUrl.includes('?')?'&':'?'}ids=${L.map(p=>p.partage.fileId).join(',')}`),j=await r.json();
+    const byF={};L.forEach(p=>byF[p.partage.fileId]=p.id);S.reponses=S.reponses||{};let nouv=0;
+    (j.r||[]).forEach(x=>{const pid=byF[x.f];if(!pid)return;const k=`${pid}|${x.s}`,o=S.reponses[k];if(!o||o.t!==x.t){nouv++;S.reponses[k]={st:x.st,m:x.m||'',t:x.t,g:x.g||''}}});
+    if(nouv){save(true);if(!sheetEl)render();toast(`${nouv} nouvelle${nouv>1?'s':''} réponse${nouv>1?'s':''} de joueurs`)}else if(!quiet)toast('Pas de nouvelle réponse')}
+  catch(e){if(!quiet)toast('Réponses des joueurs indisponibles pour le moment')}finally{repLoading=false}}
+function repCoach(pid,key,d,h){const p=S.joueurs.find(x=>x.id===pid);if(!p||!p.partage||!p.partage.actif||!CFG.relaisUrl)return null;
+  const r=(S.reponses||{})[`${pid}|${key}`];if(!r)return {st:'att'};return {...r,ancien:r.g&&r.g!==`${d} ${h}`}}
+function repChipC(r){if(!r)return '';if(r.ancien)return '<span class="chip mmixte">Réponse avant modification</span>';
+  return r.st==='ok'?'<span class="chip mfort">✓ Confirmé</span>':r.st==='non'?'<span class="chip mfaible">✗ Absent</span>':'<span class="chip">⏳ En attente</span>'}
+function repResumeCol(e){const L=e.ref.joueurIds.map(id=>repCoach(id,e.key,e.date,e.debut)).filter(Boolean);if(!L.length)return '';
+  const ok=L.filter(r=>r.st==='ok'&&!r.ancien).length,non=L.filter(r=>r.st==='non'&&!r.ancien).length;
+  return ` <span class="chip mfort">✓ ${ok}</span>${non?` <span class="chip mfaible">✗ ${non}</span>`:''}`}
+function panneauReponses(){if(!CFG.relaisUrl||!partages().length)return '';const t=today(),it=[];
+  for(let i=0;i<=7;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.off)return;
+    const ids=e.type==='ind'?[e.ref.joueurId]:e.ref.joueurIds;ids.forEach(pid=>{const r=repCoach(pid,e.type==='ind'?e.id:e.key,d,e.debut);if(r)it.push({e,d,pid,r})})})}
+  if(!it.length)return '';const abs=it.filter(x=>x.r.st==='non'&&!x.r.ancien),att=it.filter(x=>x.r.st==='att'||x.r.ancien),ok=it.filter(x=>x.r.st==='ok'&&!x.r.ancien);
+  return `<div class="panel"><div class="row between"><h3>Réponses des joueurs · 7 jours</h3><button class="btn ghost small" type="button" id="repRefresh">Actualiser</button></div>
+    <div class="small" style="margin-top:6px"><span class="chip mfort">✓ ${ok.length} confirmé${ok.length>1?'s':''}</span> <span class="chip mfaible">✗ ${abs.length} absent${abs.length>1?'s':''}</span> <span class="chip">⏳ ${att.length} en attente</span></div>
+    ${abs.length?`<div class="list" style="margin-top:8px;gap:6px">${abs.map(x=>`<div class="small"><b>${esc(pName(S.joueurs.find(p=>p.id===x.pid)))}</b> · ${JC[dow(x.d)]} ${fmtShort(x.d)} ${x.e.debut}${x.r.m?`<br><span class="muted">« ${esc(x.r.m)} »</span>`:''}</div>`).join('')}</div>`:''}</div>`}
+
 /* ============ Interactions ============ */
 document.addEventListener('click',ev=>{
   const t=ev.target.closest('button');if(!t)return;const d=t.dataset;
@@ -1685,7 +1834,12 @@ document.addEventListener('click',ev=>{
   if(d.jshare){const p=S.joueurs.find(x=>x.id===d.jshare);p.partage={actif:true,key:newKey(),fileId:null};save();return publier(true)}
   if(d.jrevoke){if(t.dataset.armed)return revoquer(d.jrevoke);t.dataset.armed=1;t.textContent='Confirmer : le lien ne fonctionnera plus';t.classList.add('solid');return}
   if(d.jcopy){const i=$('jl-'+d.jcopy)||$('jc-'+d.jcopy),v=i.value;try{navigator.clipboard.writeText(v).then(()=>toast('Copié'),()=>{i.select();toast('Sélectionné : copiez-le')})}catch(e){i.select()}return}
-  if(d.jsel!==undefined){PJ.sel=d.jsel;saveJ();return render()}
+  if(d.jsel!==undefined){if(d.jsel!==jUnlocked){jUnlocked=null;UI.pinNom=d.jsel}PJ.sel=d.jsel;saveJ();return render()}
+  if(d.jprof!==undefined){UI.pinNom=d.jprof;return render()}
+  if('jvu' in d){marquerVus();return render()}
+  if(d.jrep){const[k,i]=d.jrep.split('|'),e=(UI.jitems||[])[+i];if(!e)return;
+    if(k==='ok')return repondre(e,'ok');if(k==='non')return formAbsence(e);
+    delete PJ.rep[`${fileOf(e.src)}|${e.key}`];saveJ();return render()}
   if(d.jm!==undefined)return openJMatch(+d.jm);
   if(d.jdel!==undefined){if(!t.dataset.armed){t.dataset.armed=1;t.textContent='Confirmer';t.classList.add('solid');return}PJ.sources.splice(+d.jdel,1);saveJ();render();return toast('Programme retiré')}
   if(d.per){const[pid,days]=d.per.split('|');const b=$('tx-'+pid);if(b)b.innerHTML=tauxBlock(pid,+days);return}
@@ -1717,6 +1871,13 @@ document.addEventListener('click',ev=>{
   if(d.editgroup)return formGroupe(S.groupes.find(x=>x.id===d.editgroup));
   if(d.wk!==undefined){UI.week=d.wk==='0'?monday(today()):addDays(UI.week,7*+d.wk);return render()}
   switch(t.id){
+    case 'jPinCreate':return creerPin();
+    case 'jPinOk':return verifierPin();
+    case 'jPinForgot':$('jForgot').hidden=false;return $('jForgotCode').focus();
+    case 'jForgotOk':return oubliPin();
+    case 'jLock':jUnlocked=null;closeSheet();return render();
+    case 'jPinChange':delete PJ.profils[jUnlocked];UI.pinNom=jUnlocked;jUnlocked=null;saveJ();return render();
+    case 'repRefresh':return chargerReponses(false);
     case 'pickCoach':return setMode('coach');
     case 'pickJoueur':return setMode('joueur');
     case 'toJoueur':return setMode('joueur');
@@ -1730,7 +1891,7 @@ document.addEventListener('click',ev=>{
     case 'pinDel':S.pin=null;save();render();return toast('Code supprimé');
     case 'quickAdd':if(APPMODE==='joueur')return actualiserJ();return formSeance(null,UI.tab==='planning'&&UI.week!==monday(today())?{date:UI.week}:{});
     case 'saveSettings':S.coach=$('sCoach').value.trim();S.club=$('sClub').value.trim();
-      S.pays=$('sPays').value.trim();S.instanceSigle=$('sSigle').value.trim();S.instanceNom=$('sInst').value.trim();
+      S.pays=$('sPays').value.trim();S.tel=$('sTel').value.trim();S.instanceSigle=$('sSigle').value.trim();S.instanceNom=$('sInst').value.trim();
       S.courts=$('sCourts').value.split(',').map(x=>x.trim()).filter(Boolean);if(!S.courts.length)S.courts=['Court 1'];save();render();return toast('Réglages enregistrés');
     case 'saveTc':{const sel=[...$('tcBox').querySelectorAll(':checked')].map(x=>x.value);
       if(!sel.length){$('tcMsg').textContent='Cochez au moins un thème.';$('tcMsg').style.color='var(--danger)';return}
@@ -1776,7 +1937,7 @@ document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='rOn
 document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='jrOn'&&id!=='jrAv')return;
   const on=$('jrOn').checked;if(on&&!(await Native.notifPermission(true))){$('jrOn').checked=false;$('jrMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone.';return}
   PJ.rappels={on,avant:+$('jrAv').value};saveJ();$('jrMsg').textContent=on?'Rappels actifs.':'Rappels désactivés.'});
-document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='jAdd'){ev.preventDefault();$('jAddBtn').click()}});
+document.addEventListener('keydown',ev=>{if(ev.key!=='Enter')return;const m={jAdd:'jAddBtn',jPinIn:'jPinOk',pinN2:'jPinCreate',jForgotCode:'jForgotOk'}[ev.target.id];if(m&&$(m)){ev.preventDefault();$(m).click()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
 /* Session au démarrage : lien joueur reçu, ou choix coach / joueur */
 const lienRecu=parseCode(location.hash);
@@ -1785,7 +1946,7 @@ if(!APPMODE&&fromLocal){APPMODE='coach';try{localStorage.setItem(MODE_KEY,'coach
 render();
 if(lienRecu)ajouterCode(lienRecu).then(()=>render());
 else if(APPMODE==='joueur'&&PJ.sources.length&&navigator.onLine!==false)actualiserJ(true);
-if(APPMODE==='coach')prechargerGoogle();
+if(APPMODE==='coach'){prechargerGoogle();setTimeout(()=>chargerReponses(true),1500)}
 /* Appli installée depuis le navigateur : demander un stockage durable */
 try{if(!window.Native&&navigator.storage&&navigator.storage.persist&&matchMedia('(display-mode: standalone)').matches)navigator.storage.persist()}catch(e){}
 /* ---- Démarrage dans l'appli mobile ---- */

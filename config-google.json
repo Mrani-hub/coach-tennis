@@ -1,6 +1,7 @@
 {
-  "_aide": "Identifiants Google du partage avec les joueurs : voir README, partie « Espace joueurs ». Ces valeurs ne sont pas secrètes. playerUrl vide = adresse GitHub Pages du dépôt.",
+  "_aide": "Identifiants Google : voir README. Ces valeurs ne sont pas secrètes. playerUrl vide = adresse GitHub Pages du dépôt. relaisUrl = adresse du script Google des confirmations (vide = réponses par WhatsApp).",
   "googleClientId": "527890279652-b10s94ls6tl06d6uigph7dl94g9oitor.apps.googleusercontent.com",
   "googleApiKey": "AIzaSyC2txSu9PB3KXIJmG6wm9VMAWi2SMkr_ew",
-  "playerUrl": ""
+  "playerUrl": "",
+  "relaisUrl": ""
 }

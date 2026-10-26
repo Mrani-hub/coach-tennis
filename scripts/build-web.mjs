@@ -30,7 +30,7 @@ if (!cfg.playerUrl && process.env.GITHUB_REPOSITORY) {
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
   cfg.playerUrl = `https://${owner.toLowerCase()}.github.io/${repo}/`;
 }
-const cfgJs = `<script>window.USCM_CONFIG=${JSON.stringify({ googleClientId: cfg.googleClientId || '', googleApiKey: cfg.googleApiKey || '', playerUrl: cfg.playerUrl || '' })};</script>`;
+const cfgJs = `<script>window.USCM_CONFIG=${JSON.stringify({ googleClientId: cfg.googleClientId || '', googleApiKey: cfg.googleApiKey || '', playerUrl: cfg.playerUrl || '', relaisUrl: cfg.relaisUrl || '' })};</script>`;
 if (!cfg.googleClientId || !cfg.googleApiKey) console.warn('⚠ config-google.json : identifiants Google vides — le partage avec les joueurs sera désactivé.');
 for (const [dst, src] of Object.entries(libs)) copyFileSync(nm(src), join(www, 'lib', dst));
 
@@ -50,7 +50,8 @@ for (const [pkg, weights] of [['saira-condensed', [500, 600, 700]], ['source-san
 }
 writeFileSync(join(www, 'fonts', 'fonts.css'), fontCss);
 
-/* 3. Pont natif (Capacitor) — pas dans la version navigateur */
+/* 3. Tâche de fond Android (vérification du programme) et pont natif — pas dans la version navigateur */
+if (!PWA) { mkdirSync(join(www, 'runners'), { recursive: true }); copyFileSync(join(root, 'src/runners/programme.js'), join(www, 'runners/programme.js')); }
 if (!PWA) await build({ entryPoints: [join(root, 'src/native.js')], bundle: true, format: 'iife', minify: true, target: 'es2019', outfile: join(www, 'native.js'), logLevel: 'warning' });
 
 /* 4. Page de l'appli */

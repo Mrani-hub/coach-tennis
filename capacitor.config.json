@@ -32,6 +32,14 @@
     },
     "SocialLogin": {
       "logLevel": 1
+    },
+    "BackgroundRunner": {
+      "label": "ma.coachtennis.app.verification",
+      "src": "runners/programme.js",
+      "event": "verifierProgramme",
+      "repeat": true,
+      "interval": 15,
+      "autoStart": true
     }
   }
 }

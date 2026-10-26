@@ -8,6 +8,15 @@
 	<string>en</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>ma.coachtennis.app.verification</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 	<key>CFBundleDisplayName</key>
         <string>Coach Tennis</string>
 	<key>CFBundleExecutable</key>

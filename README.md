@@ -141,6 +141,33 @@ Le message à envoyer aux joueurs est prêt dans `INSTALLATION-JOUEURS.md`.
 
 ---
 
+## Espace joueur : connexion, notifications, confirmations
+
+**Connexion.** Le joueur ouvre le lien (ou scanne le QR code) envoyé par le coach : c'est son code d'invitation. Il choisit ensuite un **code PIN** de 4 à 6 chiffres, demandé à chaque ouverture et après 5 minutes en arrière-plan. Après 5 erreurs, l'appli impose une pause qui s'allonge. Code oublié : « Code oublié ? » puis coller à nouveau le lien du coach. Plusieurs joueurs peuvent partager un téléphone (chacun son PIN).
+
+**Notification de nouvelle séance.** À chaque publication, l'appli du coach compare le programme avec la publication précédente et écrit sur le fichier Drive du joueur un court marqueur (« Nouvelle séance : lun. 2 nov. à 16:00 »).
+- **APK Android** : l'appli vérifie ce marqueur en arrière-plan environ toutes les 15 à 30 minutes et affiche une notification. Sur certains téléphones (Xiaomi, Huawei, Samsung…), il faut autoriser l'appli à fonctionner en arrière-plan (voir dontkillmyapp.com).
+- **iPhone (écran d'accueil)** : sans serveur de notifications, la nouveauté s'affiche à l'ouverture de l'appli (bandeau « Nouveau » et rubrique « À confirmer »).
+
+**Confirmation.** Dans « À confirmer », le joueur répond **Je serai présent** ou **Je ne peux pas** (avec un message facultatif), pour ses séances individuelles et ses cours collectifs des 7 prochains jours. Le coach voit les réponses dans l'écran Aujourd'hui, sur chaque créneau du planning et dans la fiche de séance ou de cours.
+
+Deux façons d'acheminer les réponses :
+1. **Relais Google (recommandé)** : un petit script Google, installé une fois sur votre compte (gratuit, sans carte bancaire). Les réponses sont rangées dans une feuille « Coach Tennis – confirmations des joueurs » de votre Drive. Elles ne contiennent ni nom ni téléphone : seulement l'identifiant du fichier joueur, le créneau et la réponse.
+2. **WhatsApp (par défaut tant que le relais n'est pas installé)** : la réponse s'ouvre dans WhatsApp, adressée au numéro indiqué par le coach dans ses Réglages.
+
+### Installer le relais Google (5 minutes, une seule fois)
+
+1. Ouvrez **script.google.com** avec votre compte Google → **Nouveau projet**. Renommez-le `Coach Tennis – relais`.
+2. Effacez le contenu de l'éditeur et collez celui du fichier **`relais/Code.gs`** de ce dépôt. Cliquez sur 💾 **Enregistrer**.
+3. **Déployer → Nouveau déploiement** → roue dentée → **Application Web** :
+   - Description : `Relais confirmations`
+   - Exécuter en tant que : **Moi**
+   - Qui a accès : **Tout le monde**
+4. **Déployer** → **Autoriser l'accès** → choisissez votre compte. Si Google affiche « Google n'a pas validé cette application » : **Paramètres avancés → Accéder à Coach Tennis – relais (non sécurisé)** → **Autoriser**. C'est votre propre script, sur votre propre compte.
+5. Copiez l'**URL de l'application Web** (elle se termine par `/exec`) et collez-la dans `relaisUrl` du fichier `config-google.json`.
+
+Un seul relais suffit pour tous les coachs qui utilisent cette version de l'appli. Pour le modifier plus tard : *Déployer → Gérer les déploiements → ✏️ → Nouvelle version* (l'URL reste la même).
+
 ## Mettre à jour l'appli
 
 1. Remplacez `src/app.html` par la nouvelle version du fichier de l'appli.

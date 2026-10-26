@@ -11,19 +11,22 @@ Voici le programme d'entraînement de **PRÉNOM** préparé par son coach, dans 
 
 👉 LIEN_PERSONNEL
 
-**Pour l'ouvrir**
-- Touchez le lien : le programme s'affiche directement, sans compte ni mot de passe.
-- Pour le garder sur le téléphone comme une appli :
-  - **iPhone** : dans Safari, bouton **Partager** → **Sur l'écran d'accueil**.
-  - **Android** : dans Chrome, menu ⋮ → **Ajouter à l'écran d'accueil** (ou **Installer l'application**).
+**Pour l'installer**
+- **Android** (recommandé, avec notifications) : installez l'appli Coach Tennis : https://github.com/Mrani-hub/coach-tennis/releases/latest/download/CoachTennis.apk
+  Ouvrez l'appli → **Je suis joueur**, puis collez le lien personnel ci-dessus (appui long sur le lien → Copier).
+- **iPhone** : ouvrez le lien personnel **avec Safari**, puis bouton **Partager** → **Sur l'écran d'accueil**.
+- Au premier lancement, choisissez un **code PIN** (4 à 6 chiffres) : il sera demandé à chaque ouverture.
 
 **Ce que vous y trouvez**
+- Les séances à confirmer
 - Les prochaines séances individuelles et les cours collectifs de l'école, avec l'heure et le court
 - Les niveaux par thème notés par le coach et leur évolution
 - Les comptes rendus des séances
 - Les matchs, avec les points forts et les points à travailler
 
-Le programme se met à jour quand le coach publie des changements : touchez **Actualiser** en haut de l'écran.
+**Confirmer sa présence** : dans « À confirmer », touchez **Je serai présent** ou **Je ne peux pas** pour chaque séance. Le coach reçoit votre réponse.
+
+Quand le coach programme une nouvelle séance, l'appli Android vous prévient par une notification. Sur iPhone, la nouveauté s'affiche à l'ouverture de l'appli. Touchez **Actualiser** en haut de l'écran pour la dernière version du programme.
 
 Ce lien est personnel : merci de ne pas le partager.
 
