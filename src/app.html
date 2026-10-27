@@ -268,6 +268,25 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .majb span{font-size:13px;opacity:.9}
 .majb .btn{background:var(--ball);color:var(--ball-ink);border-color:var(--ball)}
 .majb .btn.ghost{background:transparent;color:var(--court-ink);border-color:transparent}
+.cal{border:1px solid var(--line);border-radius:var(--r);padding:8px;background:var(--surface-2);max-width:420px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.cal-h b{font-family:var(--f-display);font-size:18px;letter-spacing:.02em;text-transform:capitalize}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-w{text-align:center;font-size:11px;font-weight:700;color:var(--muted)}
+.cd{position:relative;aspect-ratio:1;max-width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-weight:700;font-size:15px;cursor:pointer;font-variant-numeric:tabular-nums;padding:0}
+.cd i{position:absolute;left:50%;bottom:4px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--court)}
+.cd.repos,.cd.conge,.cd.complet,.cd.passe{background:var(--line);color:var(--muted);border-color:transparent;font-weight:500}
+.cd.conge{background:repeating-linear-gradient(135deg,var(--line) 0 5px,var(--surface-2) 5px 10px)}
+.cd.auj{box-shadow:inset 0 0 0 2px var(--clay)}
+.cd.sel{background:var(--court);color:var(--court-ink);border-color:var(--court)}
+.cd.sel i{background:var(--court-ink)}
+.cal-l{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+.cal-l i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.lg-l{background:var(--surface);border:1px solid var(--line)}.lg-n{background:var(--line)}
+.slotsel{display:flex;gap:6px;flex-wrap:wrap}
+.slotb{border:1px solid var(--court);color:var(--court);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:700;font-size:14px;cursor:pointer;font-variant-numeric:tabular-nums}
+.slotb.on{background:var(--court);color:var(--court-ink)}
+.duoc{display:inline-flex;gap:4px;align-items:center;font-weight:600}
 .recap{font-size:14px;padding:8px 10px;border-left:3px solid var(--court);background:var(--surface-2);border-radius:0 6px 6px 0}
 .bar .tr{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden;border:1px solid var(--line)}
 .bar .tr i{display:block;height:100%;background:var(--court)}
@@ -388,14 +407,24 @@ const dispoOn=date=>congeOn(date)?[]:((S.dispo||{})[dow(date)]||[]).filter(r=>r.
 const inDispo=(date,a,b)=>dispoOn(date).some(r=>toMin(r.debut)<=a&&b<=toMin(r.fin));
 const rngTxt=r=>r.map(x=>`${x.debut}–${x.fin}`).join(', ');
 function dayStatus(d){const c=congeOn(d);if(c)return `Congé${c.motif?' · '+esc(c.motif):''}`;const r=dispoOn(d);return r.length?`Dispo ${rngTxt(r)}`:'Repos'}
-function freeSlots(date){
-  const t=today();if(date<t)return [];
+const dureeMin=()=>+(S.dureeMin||60);
+function freeSlots(date,o={}){
+  const t=today();if(date<t)return [];const excl=o.excl||[],min=o.min||dureeMin();
   let fr=dispoOn(date).map(r=>[toMin(r.debut),toMin(r.fin)]);
   if(date===t){const n=new Date(),now=Math.ceil((n.getHours()*60+n.getMinutes())/15)*15;fr=fr.map(([a,b])=>[Math.max(a,now),b]).filter(([a,b])=>b>a)}
-  eventsOn(date).filter(e=>!e.off).forEach(e=>{const s=toMin(e.debut),f=toMin(e.fin);
+  eventsOn(date).filter(e=>!e.off&&!(e.refs||[]).some(r=>excl.includes(r.id))).forEach(e=>{const s=toMin(e.debut),f=toMin(e.fin);
     fr=fr.flatMap(([a,b])=>f<=a||s>=b?[[a,b]]:[[a,Math.min(b,s)],[Math.max(a,f),b]].filter(([x,y])=>y>x))});
-  return fr.filter(([a,b])=>b-a>=30);
+  return fr.filter(([a,b])=>b-a>=min);
 }
+/* Heures de début possibles pour une durée donnée (pas de 30 min, plus la fin exacte de chaque plage libre) */
+function departsLibres(date,duree,excl){const out=[];
+  freeSlots(date,{excl,min:duree}).forEach(([a,b])=>{for(let m=a;m+duree<=b;m+=30)out.push(m);const last=b-duree;if(!out.includes(last))out.push(last)});
+  return [...new Set(out)].sort((x,y)=>x-y)}
+function etatJour(date,duree,excl){
+  if(date<today())return {k:'passe',l:'Date passée'};
+  const c=congeOn(date);if(c)return {k:'conge',l:`Congé${c.motif?' · '+c.motif:''}`};
+  if(!dispoOn(date).length)return {k:'repos',l:'Jour de repos ou non disponible'};
+  const n=departsLibres(date,duree,excl).length;return n?{k:'libre',l:`${n} départ${n>1?'s':''} possible${n>1?'s':''}`,n}:{k:'complet',l:'Complet pour cette durée'}}
 const freeBtns=d=>freeSlots(d).map(([a,b])=>`<button type="button" class="free-slot num" data-newseance="${d}" data-h="${fromMin(a)}">+ Libre ${fromMin(a)}–${fromMin(b)} · ${fmtH(b-a)}</button>`).join('');
 function tauxThemes(pid,since){const m={};let tot=0,n=0;
   S.seances.filter(s=>s.joueurId===pid&&s.statut==='faite'&&(!since||s.date>=since)).forEach(s=>{n++;const l=thList(s),sw=l.reduce((a,x)=>a+(+x.w||0),0)||1;
@@ -487,7 +516,7 @@ function planRappels(){if(!window.Native)return;clearTimeout(rappelTimer);rappel
     const [y,mo,da]=d.split('-').map(Number),[h,mi]=e.debut.split(':').map(Number),at=new Date(y,mo-1,da,h,mi-(+r.avant||30));
     if(at.getTime()<=now+30000)return;
     items.push({key:e.type==='ind'?e.id:e.key,at,title:`${e.debut} · ${evTitle(e)}`,
-      body:`${e.type==='ind'?'Séance individuelle':'Cours collectif'} · ${e.court}${e.type==='ind'?' · '+thTxt(e.ref):` · ${e.ref.joueurIds.length} joueurs`} · dans ${r.avant||30} min`})})}
+      body:`${e.type==='ind'?(e.refs.length>1?'Séance à deux':'Séance individuelle'):'Cours collectif'} · ${e.court}${e.type==='ind'?' · '+thTxt(e.ref):` · ${e.ref.joueurIds.length} joueurs`} · dans ${r.avant||30} min`})})}
   items.sort((a,b)=>a.at-b.at);await Native.schedule(items)},800)}
 /* ---- Proposer un fichier : appli mobile (partage), artifact (téléchargement), navigateur ---- */
 async function offerFile(fn,blob,okMsg){
@@ -507,7 +536,11 @@ try{const t=sessionStorage.getItem('uscm-tab');if(t)UI.tab=t}catch(e){}
 /* ============ Événements du planning ============ */
 function eventsOn(date){
   const ev=[],cg=congeOn(date);
-  S.seances.filter(s=>s.date===date).forEach(s=>ev.push({type:'ind',id:s.id,date,debut:s.debut,fin:fromMin(toMin(s.debut)+(+s.duree)),duree:+s.duree,court:s.court,ref:s,off:s.statut==='annulee'}));
+  const duos={};
+  S.seances.filter(s=>s.date===date).forEach(s=>{
+    if(s.duo&&duos[s.duo]){const e=duos[s.duo];e.refs.push(s);e.off=e.refs.every(r=>r.statut==='annulee');return}
+    const e={type:'ind',id:s.id,date,debut:s.debut,fin:fromMin(toMin(s.debut)+(+s.duree)),duree:+s.duree,court:s.court,ref:s,refs:[s],off:s.statut==='annulee'};
+    if(s.duo)duos[s.duo]=e;ev.push(e)});
   const j=dow(date);
   S.groupes.forEach(g=>{
     if(g.debutPeriode&&date<g.debutPeriode)return; if(g.finPeriode&&date>g.finPeriode)return;
@@ -523,7 +556,9 @@ function eventsOn(date){
     a.enConge=!a.off&&!!cg;a.horsDispo=!a.off&&!inDispo(date,toMin(a.debut),toMin(a.fin))});
   return ev;
 }
-const evTitle=e=>e.type==='ind'?pName(S.joueurs.find(p=>p.id===e.ref.joueurId)):e.ref.nom;
+const evTitle=e=>e.type==='ind'?(e.refs||[e.ref]).map(r=>{const p=S.joueurs.find(x=>x.id===r.joueurId);return (e.refs||[]).length>1&&p?p.prenom:pName(p)}).join(' + '):e.ref.nom;
+const duoSiblings=s=>s&&s.duo?S.seances.filter(x=>x.duo===s.duo&&x.id!==s.id):[];
+const avecTxt=s=>{const L=duoSiblings(s).map(x=>{const p=S.joueurs.find(y=>y.id===x.joueurId);return p?pName(p):''}).filter(Boolean);return L.length?`à deux avec ${L.join(', ')}`:''};
 function weekStats(m){
   let ind=0,col=0,conf=0,nb=0,dispo=0,libre=0;const conflits=[],hors=[];
   for(let i=0;i<7;i++){const d=addDays(m,i);
@@ -577,7 +612,9 @@ function render(){
 }
 function evCard(e,compact){
   const sub=e.type==='ind'
-    ? `<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.ref.statut!=='planifiee'?` <span class="chip st-${e.ref.statut}">${STATUTS[e.ref.statut]}</span>`:e.date>=today()?' '+repChipC(repCoach(e.ref.joueurId,e.id,e.date,e.debut)):''}`
+    ? (e.refs.length>1
+      ? `<span class="chip ind">À deux</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.refs.map(r=>{const p=S.joueurs.find(x=>x.id===r.joueurId);const st=r.statut!=='planifiee'?`<span class="chip st-${r.statut}">${STATUTS[r.statut]}</span>`:e.date>=today()?repChipC(repCoach(r.joueurId,r.id,e.date,e.debut)):'';return st?` <span class="duoc">${esc(p?p.prenom:'?')} ${st}</span>`:''}).join('')}`
+      : `<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.ref.statut!=='planifiee'?` <span class="chip st-${e.ref.statut}">${STATUTS[e.ref.statut]}</span>`:e.date>=today()?' '+repChipC(repCoach(e.ref.joueurId,e.id,e.date,e.debut)):''}`)
     : `<span class="chip col">Collectif</span>${esc(e.court)} · ${e.ref.joueurIds.length} joueurs${e.off?` <span class="chip st-annulee">${e.conge?'Congé':'Annulé'}</span>`:e.date>=today()?repResumeCol(e):''}`;
   const data=e.type==='ind'?`data-sid="${e.id}"`:`data-gkey="${esc(e.key)}"`;
   const flag=e.enConge?' <span class="chip conf">Pendant congé</span>':e.horsDispo?' <span class="chip hd">Hors dispo</span>':'';
@@ -682,6 +719,7 @@ function vReglages(){
   <div class="panel f">
     <label class="fl">Prénom du coach<input id="sCoach" value="${esc(S.coach)}"></label>
     <label class="fl">Club<input id="sClub" value="${esc(S.club)}" placeholder="ex. USCM"></label>
+    <label class="fl">Durée minimale d’une séance<select id="sDmin">${opts([30,45,60,75,90,120].map(d=>[d,fmtH(d)]),dureeMin())}</select></label>
     <label class="fl">Votre téléphone (WhatsApp)<input id="sTel" type="tel" value="${esc(S.tel||'')}" placeholder="ex. 06 12 34 56 78"></label>
     <label class="fl full">Courts (séparés par des virgules)<input id="sCourts" value="${esc(S.courts.join(', '))}"></label>
     <label class="fl">Pays<input id="sPays" value="${esc(S.pays)}" list="paysL"><datalist id="paysL"><option value="Maroc"><option value="France"><option value="Belgique"><option value="Suisse"><option value="Tunisie"><option value="Algérie"><option value="Sénégal"><option value="Côte d’Ivoire"><option value="Canada"></datalist></label>
@@ -744,18 +782,23 @@ function toast(msg){const t=document.createElement('div');t.className='toast';t.
 
 function formSeance(s,preset={}){
   const isNew=!s;
-  let pd=preset.date||today(),ph=preset.debut;
-  if(isNew&&!ph){let f=freeSlots(pd);if(!preset.date&&!f.length){for(let i=1;i<14&&!f.length;i++){const d=addDays(pd,i);f=freeSlots(d);if(f.length)pd=d}}if(f.length)ph=fromMin(f[0][0])}
-  s=s||{id:uid(),joueurId:preset.joueurId||(S.joueurs[0]||{}).id,date:pd,debut:ph||'17:00',duree:60,court:S.courts[0]||'Court 1',themes:[{t:THEMES[0],w:100}],statut:'planifiee',notes:preset.notes||''};
   if(!S.joueurs.length){openSheet(head('Séance individuelle')+'<div class="empty">Ajoutez d’abord un joueur.</div><button class="btn pri" type="button" data-newplayer="">+ Joueur</button>');return}
+  const dMin=dureeMin(),durs=[...new Set([...DUREES.filter(d=>d>=dMin),dMin])].sort((x,y)=>x-y);
+  let pd=preset.date||today(),ph=preset.debut;
+  if(isNew&&!ph){let f=departsLibres(pd,dMin,[]);if(!preset.date&&!f.length){for(let i=1;i<21&&!f.length;i++){const d=addDays(pd,i);f=departsLibres(d,dMin,[]);if(f.length)pd=d}}if(f.length)ph=fromMin(f[0])}
+  s=s||{id:uid(),joueurId:preset.joueurId||(S.joueurs.slice().sort((a,b)=>a.nom.localeCompare(b.nom))[0]||{}).id,date:pd,debut:ph||'',duree:dMin,court:S.courts[0]||'Court 1',themes:[{t:THEMES[0],w:100}],statut:'planifiee',notes:preset.notes||''};
+  const sib=duoSiblings(s)[0]||null,excl=[s.id,...duoSiblings(s).map(x=>x.id)];
+  const jOpts=S.joueurs.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(p=>[p.id,`${pName(p)} — ${categorie(p.naissance)}`]);
   openSheet(`${head(isNew?'Nouvelle séance':'Modifier la séance')}
   <div class="f">
-    <label class="fl full">Joueur<select id="fJ">${opts(S.joueurs.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(p=>[p.id,`${pName(p)} — ${categorie(p.naissance)}`]),s.joueurId)}</select></label>
-    <div class="full" id="fPrep">${prepHtml(s.joueurId,isNew?null:s.id)}</div>
-    <label class="fl">Date<input id="fD" type="date" value="${s.date}"></label>
-    <label class="fl">Début<input id="fH" type="time" step="900" value="${s.debut}"></label>
-    <label class="fl">Durée<select id="fDu">${opts(DUREES.map(d=>[d,d+' min']),s.duree)}</select></label>
+    <label class="fl">Joueur<select id="fJ">${opts(jOpts,s.joueurId)}</select></label>
+    <label class="fl">Deuxième joueur (séance à deux)<select id="fJ2">${opts([['','— Aucun : séance individuelle —'],...jOpts],sib?sib.joueurId:(preset.joueur2||''))}</select></label>
+    <label class="fl">Durée<select id="fDu">${opts(durs.map(d=>[d,fmtH(d)]),s.duree)}</select></label>
     <label class="fl">Court<select id="fC">${opts(S.courts,s.court)}</select></label>
+    <div class="full list" style="gap:8px"><span class="lbl-f">Date</span><input type="hidden" id="fD" value="${s.date}"><div id="fCal" class="cal"></div></div>
+    <div class="full list" style="gap:8px"><div class="row between"><span class="lbl-f" id="fSlotsT">Créneaux disponibles</span></div><div id="fSlots" class="slotsel"></div>
+      <label class="fl" style="max-width:220px">Heure de début (saisie libre)<input id="fH" type="time" step="900" value="${s.debut}"></label></div>
+    <div class="full" id="fPrep"></div>
     <div class="full list" style="gap:6px"><div class="row between"><span class="lbl-f">Thèmes et pondération</span><span id="thTot" class="small num"></span></div>
       <div id="thBox" class="list" style="gap:6px"></div>
       <div class="row"><button class="btn" type="button" id="thAdd">+ Thème</button><button class="btn ghost" type="button" id="thEq">Répartir également</button></div></div>
@@ -764,6 +807,38 @@ function formSeance(s,preset={}){
   </div>
   <div id="fWarn"></div>
   <div class="row"><button class="btn pri" type="button" id="fSave">Enregistrer</button><button class="btn" type="button" data-close>Annuler</button></div>`);
+
+  /* --- Calendrier et créneaux --- */
+  let calM=s.date.slice(0,8)+'01';
+  const duree=()=>+$('fDu').value;
+  const renderCal=()=>{const d0=calM,first=dow(d0),nb=new Date(+d0.slice(0,4),+d0.slice(5,7),0).getDate(),sel=$('fD').value,t=today();
+    const mois=new Date(+d0.slice(0,4),+d0.slice(5,7)-1,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    let cells='';for(let i=1;i<first;i++)cells+='<span></span>';
+    for(let j=1;j<=nb;j++){const d=d0.slice(0,8)+pad(j),st=etatJour(d,duree(),excl);
+      cells+=`<button type="button" class="cd ${st.k} ${d===sel?'sel':''} ${d===t?'auj':''}" data-cd="${d}" title="${esc(st.l)}" aria-label="${fmtDate(d)} : ${esc(st.l)}" aria-pressed="${d===sel}">${j}${st.k==='libre'?'<i></i>':''}</button>`}
+    $('fCal').innerHTML=`<div class="cal-h"><button type="button" class="btn ghost" data-cm="-1" aria-label="Mois précédent">‹</button><b>${mois}</b><button type="button" class="btn ghost" data-cm="1" aria-label="Mois suivant">›</button></div>
+      <div class="cal-g">${['L','M','M','J','V','S','D'].map(x=>`<span class="cal-w">${x}</span>`).join('')}${cells}</div>
+      <div class="cal-l"><span><i class="lg-l"></i>Disponible</span><span><i class="lg-n"></i>Indisponible ou complet (reste sélectionnable)</span></div>`};
+  const renderSlots=()=>{const d=$('fD').value,st=etatJour(d,duree(),excl),L=departsLibres(d,duree(),excl),h=$('fH').value;
+    $('fSlotsT').textContent=`Créneaux disponibles · ${fmtDate(d)} · ${fmtH(duree())}`;
+    $('fSlots').innerHTML=L.length?L.map(m=>`<button type="button" class="slotb ${fromMin(m)===h?'on':''}" data-sl="${fromMin(m)}" aria-pressed="${fromMin(m)===h}">${fromMin(m)}–${fromMin(m+duree())}</button>`).join('')
+      :`<div class="small" style="color:var(--warn)">${esc(st.l)}${st.k==='passe'?'':' : aucun créneau libre de '+fmtH(duree())+'.'} Vous pouvez quand même saisir une heure ci-dessous (exception).</div>`};
+  const choisirJour=d=>{$('fD').value=d;const L=departsLibres(d,duree(),excl);if(L.length&&!L.map(fromMin).includes($('fH').value))$('fH').value=fromMin(L[0]);renderCal();renderSlots()};
+  $('fCal').addEventListener('click',e=>{const b=e.target.closest('[data-cd],[data-cm]');if(!b)return;
+    if(b.dataset.cm){const[y,m]=calM.split('-').map(Number),n=new Date(y,m-1+(+b.dataset.cm),1);calM=`${n.getFullYear()}-${pad(n.getMonth()+1)}-01`;renderCal();return}
+    choisirJour(b.dataset.cd)});
+  $('fSlots').addEventListener('click',e=>{const b=e.target.closest('[data-sl]');if(!b)return;$('fH').value=b.dataset.sl;renderSlots()});
+  $('fH').addEventListener('input',renderSlots);
+  $('fDu').addEventListener('change',()=>{renderCal();renderSlots()});
+  renderCal();renderSlots();
+
+  /* --- Préparation (un ou deux joueurs) --- */
+  const renderPrep=()=>{const j1=$('fJ').value,j2=$('fJ2').value;
+    $('fPrep').innerHTML=prepHtml(j1,isNew?null:s.id)+(j2&&j2!==j1?prepHtml(j2,sib?sib.id:null):'');
+    if(j2&&j2!==j1)$('fPrep').querySelectorAll('details.prep').forEach(d=>d.open=false)};
+  renderPrep();
+
+  /* --- Thèmes --- */
   let pristine=isNew&&!preset.theme&&!preset.themes;
   const topTh=pid=>(prioThemes(pid)[0]||{th:CT()[0]||THEMES[0]}).th;
   let ths=isNew?(preset.themes?preset.themes.map(x=>({...x})):[{t:preset.theme||topTh(s.joueurId),w:100}]):thList(s).map(x=>({t:x.t,w:+x.w}));
@@ -786,8 +861,10 @@ function formSeance(s,preset={}){
   $('thAdd').onclick=()=>{const used=ths.map(x=>x.t);pristine=false;addTheme(prioThemes($('fJ').value).map(r=>r.th).find(x=>!used.includes(x))||CT()[0])};
   thBox.addEventListener('input',()=>{pristine=false});
   $('fPrep').addEventListener('click',e=>{const b=e.target.closest('[data-addth]');if(b)addTheme(b.dataset.addth)});
-  $('fJ').addEventListener('change',()=>{const pid=$('fJ').value;$('fPrep').innerHTML=prepHtml(pid,isNew?null:s.id);
-    if(pristine){ths=[{t:topTh(pid),w:100}];thRender()}});
+  $('fJ').addEventListener('change',()=>{renderPrep();if(pristine){ths=[{t:topTh($('fJ').value),w:100}];thRender()}});
+  $('fJ2').addEventListener('change',renderPrep);
+
+  /* --- Enregistrement --- */
   let forced=false;
   $('fSave').onclick=()=>{
     const mg={};ths.forEach(x=>{if(+x.w>0)mg[x.t]=(mg[x.t]||0)+(+x.w)});
@@ -795,23 +872,31 @@ function formSeance(s,preset={}){
     if(!themes.length){$('fWarn').innerHTML='<div class="warnbox">Donnez une pondération supérieure à 0 à au moins un thème.</div>';return}
     const sw=themes.reduce((a,x)=>a+x.w,0);themes.forEach(x=>x.w=Math.round(x.w/sw*100));
     const diff=100-themes.reduce((a,x)=>a+x.w,0);themes.sort((a,b)=>b.w-a.w)[0].w+=diff;
+    const j2=$('fJ2').value;
     const v={joueurId:$('fJ').value,date:$('fD').value,debut:$('fH').value,duree:+$('fDu').value,court:$('fC').value,themes,notes:$('fN').value.trim()};
-    if(!v.date||!v.debut){$('fWarn').innerHTML='<div class="warnbox">Indiquez une date et une heure de début.</div>';return}
+    if(j2&&j2===v.joueurId){$('fWarn').innerHTML='<div class="warnbox">Choisissez deux joueurs différents.</div>';return}
+    if(!v.date||!v.debut){$('fWarn').innerHTML='<div class="warnbox">Choisissez une date et un créneau (ou saisissez une heure de début).</div>';return}
     const rep=isNew?+$('fR').value:0;
     const all=[...Array(rep+1)].map((_,k)=>addDays(v.date,7*k));
     const enCg=all.filter(d=>congeOn(d)),dates=all.filter(d=>!congeOn(d));
     if(!dates.length){const c=congeOn(v.date);$('fWarn').innerHTML=`<div class="warnbox">Vous êtes en congé du ${fmtShort(c.debut)} au ${fmtShort(c.fin)}${c.motif?' ('+esc(c.motif)+')':''} : aucune séance ne peut être programmée sur cette période.</div>`;return}
     const a=toMin(v.debut),b=a+v.duree,clash=[];
+    if(v.duree<dMin)clash.push(`Durée inférieure à la durée minimale de séance (${fmtH(dMin)})`);
     dates.forEach(d=>{
       if(!inDispo(d,a,b)){const r=dispoOn(d);clash.push(`${fmtDate(d)} : hors de vos disponibilités (${r.length?rngTxt(r):'jour de repos'})`)}
-      eventsOn(d).forEach(e=>{if(e.off||(e.type==='ind'&&e.id===s.id))return;if(a<toMin(e.fin)&&toMin(e.debut)<b)clash.push(`${fmtDate(d)} ${e.debut}–${e.fin} : déjà occupé par ${evTitle(e)}${e.court===v.court?' (même court)':''}`)})});
+      eventsOn(d).forEach(e=>{if(e.off||(e.type==='ind'&&e.refs.some(r=>excl.includes(r.id))))return;if(a<toMin(e.fin)&&toMin(e.debut)<b)clash.push(`${fmtDate(d)} ${e.debut}–${e.fin} : déjà occupé par ${evTitle(e)}${e.court===v.court?' (même court)':''}`)})});
     if(clash.length&&!forced){forced=true;$('fWarn').innerHTML=`<div class="warnbox">À vérifier avant d’enregistrer :<br>${clash.slice(0,6).map(esc).join('<br>')}${clash.length>6?'<br>…':''}</div>`;$('fSave').textContent='Enregistrer quand même';$('fSave').classList.add('danger','solid');return}
-    if(isNew)dates.forEach(d=>S.seances.push({...s,...v,themes:v.themes.map(x=>({...x})),id:uid(),date:d,statut:'planifiee'}));
-    else Object.assign(s,v);
+    const commun=x=>({date:x,debut:v.debut,duree:v.duree,court:v.court,themes:v.themes.map(t=>({...t})),notes:v.notes});
+    if(isNew)dates.forEach(d=>{const s1={...s,...v,...commun(d),id:uid(),statut:'planifiee'};
+      if(j2){const duo=uid();s1.duo=duo;S.seances.push(s1,{...s1,id:uid(),joueurId:j2,duo})}else{delete s1.duo;S.seances.push(s1)}});
+    else{Object.assign(s,v,commun(v.date));
+      if(j2){if(sib){Object.assign(sib,commun(v.date),{joueurId:j2})}else{const duo=s.duo||uid();s.duo=duo;S.seances.push({...s,id:uid(),joueurId:j2,duo,statut:'planifiee'})}}
+      else if(sib){S.seances=S.seances.filter(x=>x.duo!==s.duo||x.id===s.id);delete s.duo}}
     save();closeSheet();render();
-    toast(isNew?(dates.length>1?`${dates.length} séances planifiées${enCg.length?` · ${enCg.length} semaine${enCg.length>1?'s':''} de congé sautée${enCg.length>1?'s':''}`:''}`:'Séance planifiée'):'Séance modifiée');apresPlanning();
+    toast(isNew?(dates.length>1?`${dates.length} séances planifiées${enCg.length?` · ${enCg.length} semaine${enCg.length>1?'s':''} de congé sautée${enCg.length>1?'s':''}`:''}`:j2?'Séance à deux planifiée':'Séance planifiée'):'Séance modifiée');apresPlanning();
   };
   sheetEl.addEventListener('input',()=>{if(forced){forced=false;$('fSave').textContent='Enregistrer';$('fSave').classList.remove('danger','solid');$('fWarn').innerHTML=''}});
+  sheetEl.addEventListener('click',e=>{if(forced&&e.target.closest('[data-cd],[data-sl]')){forced=false;$('fSave').textContent='Enregistrer';$('fSave').classList.remove('danger','solid');$('fWarn').innerHTML=''}});
 }
 
 /* ---- Fiche joueur : niveaux en étoiles, taux par thème, récapitulatif ---- */
@@ -900,25 +985,29 @@ function setStar(pid,i,n){
 }
 
 function openSeance(id){
-  const s=S.seances.find(x=>x.id===id);if(!s)return;const p=S.joueurs.find(x=>x.id===s.joueurId);
-  const e=eventsOn(s.date).find(x=>x.id===id);
+  const s=S.seances.find(x=>x.id===id);if(!s)return;
+  const grp=[s,...duoSiblings(s)],ps=grp.map(x=>S.joueurs.find(p=>p.id===x.joueurId)),p=ps[0],duo=grp.length>1;
+  const e=eventsOn(s.date).find(x=>x.refs&&x.refs.some(r=>r.id===id))||{fin:fromMin(toMin(s.debut)+(+s.duree)),conflits:[]};
   const recents=p?S.seances.filter(x=>x.joueurId===p.id&&x.statut==='faite'&&x.id!==id).sort((a,b)=>(b.date+b.debut).localeCompare(a.date+a.debut)).slice(0,5):[];
-  openSheet(`${head(esc(pName(p)))}
+  const titre=duo?ps.map(x=>x?x.prenom:'?').join(' + '):esc(pName(p));
+  openSheet(`${head(duo?esc(titre)+' <span class="chip ind" style="vertical-align:4px">À deux</span>':titre)}
   <dl class="kv num"><dt>Date</dt><dd>${fmtDate(s.date)}</dd><dt>Horaire</dt><dd>${s.debut} – ${e.fin} (${s.duree} min)</dd><dt>Court</dt><dd>${esc(s.court)}</dd>
-    <dt>Thèmes</dt><dd><span class="row" style="gap:4px">${thList(s).map(x=>`<span class="chip ind">${esc(x.t)} · ${x.w}% · ${Math.round(s.duree*x.w/100)} min</span>`).join('')}</span></dd>${p?`<dt>Catégorie</dt><dd>${categorie(p.naissance)} · ${esc(p.niveau)}</dd>`:''}</dl>
+    <dt>Thèmes</dt><dd><span class="row" style="gap:4px">${thList(s).map(x=>`<span class="chip ind">${esc(x.t)} · ${x.w}% · ${Math.round(s.duree*x.w/100)} min</span>`).join('')}</span></dd>${!duo&&p?`<dt>Catégorie</dt><dd>${categorie(p.naissance)} · ${esc(p.niveau)}</dd>`:''}</dl>
   ${e.conflits.length?`<div class="warnbox">Chevauche : ${e.conflits.map(c=>`${c.debut}–${c.fin} ${esc(evTitle(c))}`).join(', ')}</div>`:''}
-  ${(()=>{const r=repCoach(s.joueurId,s.id,s.date,s.debut);return r?`<div class="row" style="gap:6px"><b class="small">Réponse du joueur :</b> ${repChipC(r)}${r.m?` <span class="small muted">« ${esc(r.m)} »</span>`:''}</div>`:''})()}
-  <div><h3 style="margin-bottom:6px">Statut</h3><div class="seg" id="stSeg">${Object.entries(STATUTS).map(([k,l])=>`<button type="button" data-st="${k}" aria-pressed="${s.statut===k}">${l}</button>`).join('')}</div></div>
-  ${p?`<hr class="sep"><h2 style="font-size:22px">Fiche du joueur</h2>${ficheHtml(p,thList(s).map(x=>x.t))}
+  ${grp.map((x,i)=>{const r=repCoach(x.joueurId,x.id,x.date,x.debut),pp=ps[i];
+    return `<div class="list" style="gap:6px">${duo?`<b>${esc(pName(pp))}</b>`:''}${r?`<div class="row" style="gap:6px"><span class="small">Réponse du joueur :</span> ${repChipC(r)}${r.m?` <span class="small muted">« ${esc(r.m)} »</span>`:''}</div>`:''}
+      <div><h3 style="margin-bottom:6px">Statut${duo?` · ${esc(pp?pp.prenom:'')}`:''}</h3><div class="seg" data-stseg="${x.id}">${Object.entries(STATUTS).map(([k,l])=>`<button type="button" data-st="${k}" aria-pressed="${x.statut===k}">${l}</button>`).join('')}</div></div></div>`}).join('')}
+  ${p&&!duo?`<hr class="sep"><h2 style="font-size:22px">Fiche du joueur</h2>${ficheHtml(p,thList(s).map(x=>x.t))}
   <div><h3 style="margin-bottom:8px">Dernières séances</h3>${recents.length?`<div class="list" style="gap:6px">${recents.map(r=>`<div class="recap"><b class="num">${fmtShort(r.date)}</b> · ${esc(thTxt(r))}${r.notes?`<br><span class="small muted">${esc(r.notes)}</span>`:''}</div>`).join('')}</div>`:'<div class="muted small">Première séance faite avec ce joueur.</div>'}</div><hr class="sep">`:''}
-  <label class="fl">Compte rendu<textarea id="oN" placeholder="Points travaillés, progrès, consignes…">${esc(s.notes)}</textarea></label>
+  ${duo?ps.map(pp=>pp?`<details class="prep"><summary>Fiche de ${esc(pName(pp))}</summary>${ficheHtml(pp,thList(s).map(x=>x.t))}</details>`:'').join(''):''}
+  <label class="fl">Compte rendu${duo?' (commun aux deux joueurs)':''}<textarea id="oN" placeholder="Points travaillés, progrès, consignes…">${esc(s.notes)}</textarea></label>
   <div class="row"><button class="btn pri" type="button" id="oSave">Enregistrer</button><button class="btn" type="button" id="oEdit">Modifier</button><button class="btn" type="button" id="oDup">Copier semaine suivante</button><span style="flex:1"></span><button class="btn danger" type="button" id="oDel">Supprimer</button></div>`);
-  let st=s.statut;
-  $('stSeg').onclick=ev=>{const b=ev.target.closest('[data-st]');if(!b)return;st=b.dataset.st;$('stSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b))};
-  $('oSave').onclick=()=>{s.statut=st;s.notes=$('oN').value.trim();save();closeSheet();render();toast('Séance mise à jour');apresPlanning()};
+  const st={};grp.forEach(x=>st[x.id]=x.statut);
+  sheetEl.querySelectorAll('[data-stseg]').forEach(seg=>seg.onclick=ev=>{const b=ev.target.closest('[data-st]');if(!b)return;st[seg.dataset.stseg]=b.dataset.st;seg.querySelectorAll('button').forEach(y=>y.setAttribute('aria-pressed',y===b))});
+  $('oSave').onclick=()=>{const n=$('oN').value.trim();grp.forEach(x=>{x.statut=st[x.id];x.notes=n});save();closeSheet();render();toast('Séance mise à jour');apresPlanning()};
   $('oEdit').onclick=()=>formSeance(s);
-  $('oDup').onclick=()=>{S.seances.push({...s,themes:thList(s).map(x=>({...x})),id:uid(),date:addDays(s.date,7),statut:'planifiee',notes:''});save();closeSheet();render();toast(`Copiée au ${fmtShort(addDays(s.date,7))}`);apresPlanning()};
-  $('oDel').onclick=function(){if(this.dataset.armed){S.seances=S.seances.filter(x=>x.id!==id);save();closeSheet();render();toast('Séance supprimée');apresPlanning()}else{this.dataset.armed=1;this.textContent='Confirmer la suppression';this.classList.add('solid')}};
+  $('oDup').onclick=()=>{const nd=addDays(s.date,7),duoId=duo?uid():null;grp.forEach(x=>{const c={...x,themes:thList(x).map(y=>({...y})),id:uid(),date:nd,statut:'planifiee',notes:''};if(duoId)c.duo=duoId;else delete c.duo;S.seances.push(c)});save();closeSheet();render();toast(`Copiée au ${fmtShort(nd)}`);apresPlanning()};
+  $('oDel').onclick=function(){if(this.dataset.armed){const ids=grp.map(x=>x.id);S.seances=S.seances.filter(x=>!ids.includes(x.id));save();closeSheet();render();toast(duo?'Séance à deux supprimée':'Séance supprimée');apresPlanning()}else{this.dataset.armed=1;this.textContent=duo?'Supprimer pour les deux joueurs':'Confirmer la suppression';this.classList.add('solid')}};
 }
 
 function openCours(key){
@@ -981,7 +1070,7 @@ function openJoueur(id){
     <div class="ptab">${PRW_HEAD}${prioRows(p.id,null,'fiche',3)}</div>
     <details style="margin-top:6px"><summary class="small" style="cursor:pointer;font-weight:600">Voir le classement des ${CT().length} thèmes</summary><div class="ptab" style="margin-top:6px">${PRW_HEAD}${prioRows(p.id,null,'all')}</div></details></div>
   ${(p.evol||[]).length?`<div><h3 style="margin-bottom:8px">Évolution des niveaux</h3><div class="list" style="gap:4px">${p.evol.slice(-8).reverse().map(e=>`<div class="small num"><b>${fmtShort(e.d)}</b> · ${esc(e.t)} : ${e.from} → ${e.to} <span class="trend ${e.to>e.from?'up':'down'}">${e.to>e.from?'▲ progrès':'▼ régression'}</span></div>`).join('')}</div></div>`:''}
-  <div><h3 style="margin-bottom:8px">À venir</h3>${avenir.length?`<div class="list">${avenir.map(s=>`<button type="button" class="btn" style="text-align:left" data-sid="${s.id}">${fmtDate(s.date)} · ${s.debut} · ${esc(thTxt(s))}</button>`).join('')}</div>`:'<div class="muted small">Aucune séance prévue.</div>'}</div>
+  <div><h3 style="margin-bottom:8px">À venir</h3>${avenir.length?`<div class="list">${avenir.map(s=>`<button type="button" class="btn" style="text-align:left" data-sid="${s.id}">${fmtDate(s.date)} · ${s.debut} · ${esc(thTxt(s))}${s.duo?` · ${esc(avecTxt(s))}`:''}</button>`).join('')}</div>`:'<div class="muted small">Aucune séance prévue.</div>'}</div>
   <div><h3 style="margin-bottom:8px">Historique</h3>${ss.filter(s=>s.date<t).length?`<div class="list">${ss.filter(s=>s.date<t).slice(0,10).map(s=>`<button type="button" class="btn" style="text-align:left;font-weight:400" data-sid="${s.id}"><b>${fmtShort(s.date)}</b> · ${esc(thTxt(s))} <span class="chip st-${s.statut}">${STATUTS[s.statut]}</span>${s.notes?`<br><span class="small muted">${esc(s.notes)}</span>`:''}</button>`).join('')}</div>`:'<div class="muted small">Pas encore de séance passée.</div>'}</div>
   <div class="row"><button class="btn pri" type="button" data-plan="${p.id}">Planifier une séance</button><button class="btn" type="button" id="pEdit">Modifier</button><span style="flex:1"></span><button class="btn danger" type="button" id="pDel">Supprimer</button></div>`);
   UI.openPid=id;$('pEdit').onclick=()=>formJoueur(p);
@@ -1491,7 +1580,7 @@ function payloadJoueur(p){
     coach:{nom:S.coach||'',club:S.club||'',instance:instTxt(),tel:S.tel||''},
     joueur:{id:p.id,prenom:p.prenom,nom:p.nom,categorie:categorie(p.naissance),niveau:p.niveau,objectifs:p.notes||'',classements:p.classements||[]},
     themesCoach:CT(),niveaux:p.niveaux||{},evol:(p.evol||[]).slice(-30),externes:Object.fromEntries(THEMES.filter(x=>!isCT(x)).map(x=>[x,extLabel(p,x)])),
-    seances:S.seances.filter(s=>s.joueurId===p.id&&s.date>=addDays(t,-180)).map(s=>({id:s.id,date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
+    seances:S.seances.filter(s=>s.joueurId===p.id&&s.date>=addDays(t,-180)).map(s=>({id:s.id,avec:duoSiblings(s).map(x=>{const q=S.joueurs.find(y=>y.id===x.joueurId);return q?q.prenom+' '+q.nom:''}).filter(Boolean).join(', '),date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
     cours,groupes:gs.map(g=>{const ec=S.ecoles.find(x=>x.id===g.ecoleId)||{};return {nom:g.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:g.niveau||'',creneaux:g.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court}))}}),
     conges:(S.conges||[]).filter(c=>c.fin>=t).map(c=>({debut:c.debut,fin:c.fin,motif:c.motif||''})),
     matchs:matchesOf(p.id).slice(0,20).map(({joueurId,...x})=>x),taux:{m,tot,n}}}
@@ -1649,7 +1738,7 @@ function srcSel(){const ok=PJ.sources.filter(s=>s.data),noms=[...new Set(ok.map(
   const sel=noms.includes(PJ.sel)?PJ.sel:noms[0]||'';return {noms,sel,list:ok.filter(s=>nomJ(s.data)===sel)}}
 function agendaJ(list,from,to){const it=[];
   list.forEach(s=>{const d=s.data,c=d.coach.nom?`Coach ${d.coach.nom}`:'Coach';
-    d.seances.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'ind',src:s,key:x.id||`${x.date}|${x.debut}`,date:x.date,debut:x.debut,fin:fromMin(toMin(x.debut)+x.duree),duree:x.duree,court:x.court,themes:x.themes,statut:x.statut,notes:x.notes,coach:c})});
+    d.seances.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'ind',src:s,avec:x.avec||'',key:x.id||`${x.date}|${x.debut}`,date:x.date,debut:x.debut,fin:fromMin(toMin(x.debut)+x.duree),duree:x.duree,court:x.court,themes:x.themes,statut:x.statut,notes:x.notes,coach:c})});
     d.cours.forEach(x=>{if(x.date<from||x.date>to)return;it.push({type:'col',...x,src:s,key:x.key||`${x.groupe}|${x.date}|${x.debut}`,coach:c})})});
   return it.sort((a,b)=>(a.date+a.debut).localeCompare(b.date+b.debut))}
 function jEv(e,big){
@@ -1657,7 +1746,7 @@ function jEv(e,big){
   const off=e.type==='col'?e.annule:e.statut==='annulee';
   const th=e.type==='ind'?`<span class="jth">${e.themes.map(x=>`<span class="chip">${esc(x.t)}${e.themes.length>1?' '+x.w+' %':''}</span>`).join('')}</span>`:(e.niveau?`<span class="small muted">${esc(e.niveau)}</span>`:'');
   return `<div class="ev ${e.type} ${off?'off':''} ${big?'jbig':''}" style="cursor:default"><span class="t-time num">${e.debut}<i>${e.fin}</i></span>
-    <span class="t-name">${esc(e.type==='ind'?'Séance individuelle':e.groupe)}${off?` <span class="chip st-annulee">${esc(e.motif||'Annulé')}</span>`:''}</span>
+    <span class="t-name">${esc(e.type==='ind'?(e.avec?'Séance à deux':'Séance individuelle'):e.groupe)}${e.avec?` <span class="small muted" style="font-weight:600">avec ${esc(e.avec)}</span>`:''}${off?` <span class="chip st-annulee">${esc(e.motif||'Annulé')}</span>`:''}</span>
     <span class="t-sub">${sub}</span>${th?`<span></span><span class="t-sub">${th}</span>`:''}${!off&&e.date>=today()&&repJ(e)?`<span></span><span class="t-sub">${repChipJ(e)}</span>`:''}</div>`}
 function jHeader(){const {noms,sel,list}=srcSel();
   return `${noms.length>1?`<div class="seg">${noms.map(n=>`<button type="button" data-jsel="${esc(n)}" aria-pressed="${n===sel}">${esc(n.split(' ')[0])}</button>`).join('')}</div>`:''}
@@ -1847,7 +1936,7 @@ function repResumeCol(e){const L=e.ref.joueurIds.map(id=>repCoach(id,e.key,e.dat
   return ` <span class="chip mfort">✓ ${ok}</span>${non?` <span class="chip mfaible">✗ ${non}</span>`:''}`}
 function panneauReponses(){if(!CFG.relaisUrl||!partages().length)return '';const t=today(),it=[];
   for(let i=0;i<=7;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.off)return;
-    const ids=e.type==='ind'?[e.ref.joueurId]:e.ref.joueurIds;ids.forEach(pid=>{const r=repCoach(pid,e.type==='ind'?e.id:e.key,d,e.debut);if(r)it.push({e,d,pid,r})})})}
+    const L=e.type==='ind'?e.refs.filter(x=>x.statut==='planifiee').map(x=>[x.joueurId,x.id]):e.ref.joueurIds.map(pid=>[pid,e.key]);L.forEach(([pid,k])=>{const r=repCoach(pid,k,d,e.debut);if(r)it.push({e,d,pid,r})})})}
   if(!it.length)return '';const abs=it.filter(x=>x.r.st==='non'&&!x.r.ancien),att=it.filter(x=>x.r.st==='att'||x.r.ancien),ok=it.filter(x=>x.r.st==='ok'&&!x.r.ancien);
   return `<div class="panel"><div class="row between"><h3>Réponses des joueurs · 7 jours</h3><button class="btn ghost small" type="button" id="repRefresh">Actualiser</button></div>
     <div class="small" style="margin-top:6px"><span class="chip mfort">✓ ${ok.length} confirmé${ok.length>1?'s':''}</span> <span class="chip mfaible">✗ ${abs.length} désolé${abs.length>1?'s':''}</span> <span class="chip">⏳ ${att.length} en attente</span></div>
@@ -1949,7 +2038,7 @@ document.addEventListener('click',ev=>{
     case 'pinDel':S.pin=null;save();render();return toast('Code supprimé');
     case 'quickAdd':if(APPMODE==='joueur')return actualiserJ();return formSeance(null,UI.tab==='planning'&&UI.week!==monday(today())?{date:UI.week}:{});
     case 'saveSettings':S.coach=$('sCoach').value.trim();S.club=$('sClub').value.trim();
-      S.pays=$('sPays').value.trim();S.tel=$('sTel').value.trim();S.instanceSigle=$('sSigle').value.trim();S.instanceNom=$('sInst').value.trim();
+      S.pays=$('sPays').value.trim();S.tel=$('sTel').value.trim();S.dureeMin=+$('sDmin').value;S.instanceSigle=$('sSigle').value.trim();S.instanceNom=$('sInst').value.trim();
       S.courts=$('sCourts').value.split(',').map(x=>x.trim()).filter(Boolean);if(!S.courts.length)S.courts=['Court 1'];save();render();return toast('Réglages enregistrés');
     case 'saveTc':{const sel=[...$('tcBox').querySelectorAll(':checked')].map(x=>x.value);
       if(!sel.length){$('tcMsg').textContent='Cochez au moins un thème.';$('tcMsg').style.color='var(--danger)';return}
