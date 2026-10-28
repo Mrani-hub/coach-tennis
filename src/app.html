@@ -2066,22 +2066,42 @@ function panneauReponses(){if(!CFG.relaisUrl||!partages().length)return '';const
     ${abs.length?`<div class="list" style="margin-top:8px;gap:6px">${abs.map(x=>`<div class="small"><b>${esc(pName(S.joueurs.find(p=>p.id===x.pid)))}</b> · ${JC[dow(x.d)]} ${fmtShort(x.d)} ${x.e.debut}${x.r.m?`<br><span class="muted">« ${esc(x.r.m)} »</span>`:''}</div>`).join('')}</div>`:''}</div>`}
 
 /* ============ Mises à jour de l'appli ============ */
-let MAJ=null,majCheck=0;
+let MAJ=null,majCheck=0,majDejaVerifie=false;
 const cmpVer=(x,y)=>{const a=String(x).split('.').map(Number),b=String(y).split('.').map(Number);for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d>0?1:-1}return 0};
 const majActive=()=>!!(CFG.playerUrl&&/^\d+\.\d+/.test(CFG.version||''));
-async function verifierMaj(manuel){if(!majActive())return;majCheck=Date.now();
+async function verifierMaj(manuel){if(!majActive())return;const premier=!majCheck;majCheck=Date.now();majDejaVerifie=!premier;
   try{const r=await fetch(`${CFG.playerUrl.replace(/#.*$/,'').replace(/\/?$/,'/')}version.json?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();
-    MAJ=cmpVer(j.version,CFG.version)>0?j:null;
+    const avant=MAJ;MAJ=cmpVer(j.version,CFG.version)>0?j:null;
     if(MAJ&&!window.Native&&navigator.serviceWorker){navigator.serviceWorker.getRegistration().then(g=>g&&g.update()).catch(()=>{})}
+    if(MAJ&&window.Native&&Native.majOta&&j.zip&&(await Native.majBuild())>=(+j.natifMin||0)){
+      MAJ.ota=true;MAJ.zipUrl=new URL(j.zip,CFG.playerUrl.replace(/#.*$/,'').replace(/\/?$/,'/')).href;
+      if(avant&&avant.version===MAJ.version&&avant.bundle)MAJ.bundle=avant.bundle;
+      if(!MAJ.bundle){/* téléchargement discret en arrière-plan : la mise à jour sera prête d'un geste */
+        const deja=await Native.majTrouve(MAJ.version);
+        if(deja&&deja.status==='error'){MAJ.ota=false}/* cette version a déjà échoué au démarrage : on propose l'APK */
+        else if(deja&&!manuel&&!majDejaVerifie&&!sheetEl){return Native.majAppliquer(deja)}/* paquet téléchargé lors d'une session précédente : appliqué au lancement */
+        else Native.majTelecharger(MAJ.zipUrl,MAJ.version).then(b=>{if(MAJ&&MAJ.version===b.version){MAJ.bundle=b;render()}}).catch(()=>{})}}
     if(manuel)toast(MAJ?`Version ${MAJ.version} disponible`:`Vous avez la dernière version (${CFG.version})`);
     if(manuel||MAJ)render()}
   catch(e){if(manuel)toast('Vérification impossible : vérifiez la connexion')}}
 function bandeauMaj(){if(!MAJ)return '';let plusTard='';try{plusTard=localStorage.getItem('ct-maj-plus-tard')}catch(e){}if(plusTard===MAJ.version)return '';
-  return `<div class="majb" role="status"><div><b>Nouvelle version ${esc(MAJ.version)} disponible</b>${MAJ.notes?`<span>${esc(MAJ.notes)}</span>`:''}</div>
+  return `<div class="majb" role="status"><div><b>Nouvelle version ${esc(MAJ.version)} disponible</b>${MAJ.notes?`<span>${esc(MAJ.notes)}</span>`:''}${MAJ.ota?`<span>${MAJ.bundle?'Prête à installer : quelques secondes, sans réinstaller l’appli. Vos données sont conservées.':'Mise à jour dans l’appli, sans réinstaller. Vos données sont conservées.'}</span>`:''}</div>
     <div class="row"><button class="btn" type="button" data-maj>${window.Native?'Mettre à jour':'Recharger'}</button><button class="btn ghost" type="button" data-majlater>Plus tard</button></div></div>`}
 function installerMaj(){if(!MAJ)return;
   if(!window.Native){location.reload();return}
   try{localStorage.removeItem('ct-maj-plus-tard')}catch(e){}
+  if(MAJ.ota)return majDansAppli();
+  majApk()}
+async function majDansAppli(){const M=MAJ;
+  openSheet(`${head('Mise à jour')}<p style="margin:0">Version ${esc(CFG.version)} → <b>${esc(M.version)}</b></p>${M.notes?`<div class="recap">${esc(M.notes)}</div>`:''}
+    <div class="small" id="majEtat">${M.bundle?'Installation…':'Téléchargement… 0 %'}</div><div class="bars"><div class="bar"><span></span><span class="tr"><i id="majBar" style="width:${M.bundle?100:2}%"></i></span><b></b></div></div>
+    <p class="small muted" style="margin:0">L’appli va redémarrer d’elle-même. Vos données sont conservées.</p>`);
+  try{const b=M.bundle||await Native.majTelecharger(M.zipUrl,M.version,pc=>{const e=$('majEtat'),r=$('majBar');if(e)e.textContent=`Téléchargement… ${Math.round(pc)} %`;if(r)r.style.width=Math.max(2,pc)+'%'});
+    M.bundle=b;if($('majEtat'))$('majEtat').textContent='Installation…';if($('majBar'))$('majBar').style.width='100%';
+    await Native.majAppliquer(b)}
+  catch(e){M.ota=false;const el=$('majEtat');if(el){el.innerHTML='<span style="color:var(--danger)">La mise à jour dans l’appli n’a pas abouti (connexion ?).</span>'}
+    setTimeout(()=>majApk(),1200)}}
+function majApk(){
   openSheet(`${head('Mettre à jour Coach Tennis')}<p style="margin:0">Version ${esc(CFG.version)} → <b>${esc(MAJ.version)}</b></p>${MAJ.notes?`<div class="recap">${esc(MAJ.notes)}</div>`:''}
     <ol class="mlist"><li>Touchez <b>Télécharger</b> : le navigateur télécharge la nouvelle version.</li><li>Ouvrez le fichier <b>CoachTennis.apk</b> (notification de téléchargement).</li><li>Touchez <b>Mettre à jour</b> ou <b>Installer</b>. Vos données sont conservées.</li></ol>
     <div class="row"><a class="btn pri" href="${esc(MAJ.apk)}" target="_blank" rel="noopener" id="majDl">Télécharger</a><button class="btn" type="button" data-close>Annuler</button></div>`);
@@ -2089,7 +2109,7 @@ function installerMaj(){if(!MAJ)return;
 function majReglages(){if(!majActive())return '';
   return `<div class="panel list"><h3>Mise à jour</h3><div class="small">Version installée : <b>${esc(CFG.version)}</b>${MAJ?` · <span style="color:var(--clay);font-weight:700">version ${esc(MAJ.version)} disponible</span>`:''}</div>
     <div class="row">${MAJ?'<button class="btn pri" type="button" data-maj>Mettre à jour</button>':''}<button class="btn" type="button" id="majCheck">Rechercher une mise à jour</button></div>
-    ${window.Native?'':'<p class="small muted" style="margin:0">Sur iPhone et dans le navigateur, l’appli se met à jour toute seule à l’ouverture.</p>'}</div>`}
+    ${window.Native?(window.Native.majOta?'<p class="small muted" style="margin:0">Les nouvelles versions s’installent dans l’appli en quelques secondes, sans retélécharger l’APK. Une version prête s’installe aussi d’elle-même au lancement suivant.</p>':''):'<p class="small muted" style="margin:0">Sur iPhone et dans le navigateur, l’appli se met à jour toute seule à l’ouverture.</p>'}</div>`}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-majCheck>6*3600000)verifierMaj(false)});
 setInterval(()=>{if(APPMODE==='coach'&&!document.hidden&&CFG.relaisUrl)chargerReponses(true)},60000);
 
@@ -2231,6 +2251,6 @@ if(window.Native){
     else if(!j&&fromLocal)Native.persist(JSON.stringify(S));
     if(!APPMODE&&!lienRecu&&(m||restored)){APPMODE=m||'coach';try{localStorage.setItem(MODE_KEY,APPMODE)}catch(e){}}
     if(pj&&!PJ.sources.length){try{PJ=Object.assign(PJ,JSON.parse(pj));localStorage.setItem(PJ_KEY,pj)}catch(e){}}
-    render();planRappels();Native.hideSplash()});
+    render();planRappels();Native.hideSplash();if(Native.majPret)Native.majPret()});
 }
 </script>

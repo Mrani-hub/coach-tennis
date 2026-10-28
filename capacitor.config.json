@@ -40,6 +40,14 @@
       "repeat": true,
       "interval": 15,
       "autoStart": true
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "resetWhenUpdate": true,
+      "autoDeletePrevious": true,
+      "appReadyTimeout": 15000,
+      "statsUrl": "",
+      "disableJSLogging": true
     }
   }
 }

@@ -3,6 +3,8 @@
 #  Android : APK signé à envoyer directement aux coachs (secrets ANDROID_*).
 #            Il est aussi joint à une « Release » GitHub : lien de téléchargement fixe
 #            …/releases/latest/download/CoachTennis.apk
+#            Ensuite, l'appli Android se met à jour d'elle-même (paquet web publié sur GitHub Pages) ;
+#            l'APK n'est à renvoyer que si natif-min.txt est augmenté (changement de la partie native).
 #  iPhone  : appli web installable depuis Safari (écran d'accueil), téléchargeable en artifact
 #            et mise en ligne sur GitHub Pages si la variable PUBLIER_PAGES vaut true.
 #  iOS natif (option payante, compte Apple Developer) : TestFlight si la variable IOS_TESTFLIGHT vaut true.
@@ -102,9 +104,15 @@ jobs:
       - name: Construire
         env:
           NOTES: ${{ github.event.head_commit.message }}
+          ZIP_NATIF: natif/coach-tennis-${{ github.run_number }}.zip
         run: |
           npm ci
+          # Paquet web de l'appli Android : téléchargé par l'appli pour se mettre à jour sans réinstaller l'APK
+          npm run build:web
+          (cd www && zip -qr "$RUNNER_TEMP/natif.zip" .)
           npm run build:pwa
+          mkdir -p pwa/natif
+          cp "$RUNNER_TEMP/natif.zip" "pwa/$ZIP_NATIF"
       - name: Artifact (dossier à héberger)
         uses: actions/upload-artifact@v5
         with:

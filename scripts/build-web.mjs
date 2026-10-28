@@ -173,7 +173,10 @@ if (PWA) {
     version: process.env.VERSION_NAME || 'dev',
     date: new Date().toISOString(),
     notes,
-    apk: repo ? `https://github.com/${repo}/releases/latest/download/CoachTennis.apk` : ''
+    apk: repo ? `https://github.com/${repo}/releases/latest/download/CoachTennis.apk` : '',
+    /* Mise à jour dans l'appli Android, sans réinstaller : paquet web (zip) + version native minimale requise */
+    zip: process.env.ZIP_NATIF || '',
+    natifMin: Number(String(readFileSync(new URL('../natif-min.txt', import.meta.url), 'utf8')).trim()) || 0
   }, null, 2));
 }
 /* 6. Page de confidentialité (demandée par Google pour l'écran de connexion) */

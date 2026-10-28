@@ -8,6 +8,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { BackgroundRunner } from '@capacitor/background-runner';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 
 const KEY = 'uscm-coach-v1';
 const toB64 = async data => {
@@ -67,6 +68,24 @@ const Native = {
   bgConfigurer(details) {
     BackgroundRunner.dispatchEvent({ label: 'ma.coachtennis.app.verification', event: 'configurer', details }).catch(() => {});
   },
+
+  /* ---- Mise à jour dans l'appli (sans réinstaller l'APK) ----
+     Le contenu de l'appli (HTML/JS) est téléchargé en zip depuis le site de l'appli puis activé ;
+     l'APK n'est à réinstaller que si la partie native change (version native < natifMin). */
+  majOta: true,
+  async majPret() { try { await CapacitorUpdater.notifyAppReady(); } catch (e) {} },
+  async majBuild() { try { return Number((await App.getInfo()).build) || 0; } catch (e) { return 0; } },
+  /* Paquet déjà téléchargé pour cette version ? */
+  async majTrouve(version) {
+    try { const { bundles } = await CapacitorUpdater.list(); const L = bundles.filter(b => b.version === version); return L.find(b => b.status !== 'error') || L[0] || null; } catch (e) { return null; }
+  },
+  async majTelecharger(url, version, onProgress) {
+    const old = await Native.majTrouve(version); if (old && old.status !== 'error') return old;
+    let h = null; if (onProgress) h = await CapacitorUpdater.addListener('download', ev => onProgress(ev.percent || 0));
+    try { return await CapacitorUpdater.download({ url, version }); } finally { if (h) h.remove(); }
+  },
+  /* Active la nouvelle version : l'appli redémarre aussitôt sur la nouvelle version */
+  async majAppliquer(bundle) { await Native.flush(); await CapacitorUpdater.set({ id: bundle.id }); },
 
   /* Petites valeurs durables (mode coach/joueur, programmes suivis par un joueur) */
   async kvGet(key) { try { return (await Preferences.get({ key })).value; } catch (e) { return null; } },
