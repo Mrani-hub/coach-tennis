@@ -172,7 +172,8 @@ Un seul relais suffit pour tous les coachs qui utilisent cette version de l'appl
 
 1. Remplacez `src/app.html` par la nouvelle version du fichier de l'appli.
 2. Envoyez-le sur GitHub. La compilation repart et le numéro de version augmente (1.0.1, 1.0.2…).
-3. **Android** : envoyez le nouvel APK (le lien « latest » pointe déjà dessus). Les coachs l'installent par-dessus, leurs données sont gardées.
+3. **Android** : rien à envoyer. L'appli télécharge discrètement la nouvelle version (quelques Mo, depuis GitHub Pages) et propose « Mettre à jour » : elle redémarre en quelques secondes, sans réinstaller l'APK, données conservées. Une version téléchargée s'installe aussi d'elle-même au lancement suivant. Si l'installation échoue, l'appli revient seule à la version précédente et propose l'APK.
+   *Exception* : si la partie native change (nouveau plugin, autorisation Android…), augmentez le nombre dans `natif-min.txt` (mettez le numéro de la compilation qui arrive). Les appareils plus anciens proposeront alors de télécharger l'APK, une seule fois.
    **iPhone** : rien à faire. L'appli se met à jour à la prochaine ouverture avec du réseau et affiche « Coach Tennis a été mis à jour ».
 
 ---
@@ -182,6 +183,7 @@ Un seul relais suffit pour tous les coachs qui utilisent cette version de l'appl
 ```
 src/app.html            L'appli (le même fichier que la version web). C'est le seul fichier à modifier.
 src/native.js           Le pont avec le téléphone Android/iOS (stockage, partage, rappels, bouton retour, connexion Google).
+natif-min.txt           Numéro de compilation Android minimal pour la mise à jour dans l'appli (voir « Mettre à jour l'appli »).
 config-google.json        Identifiants Google pour l'espace joueur (voir « Relier l'appli à Google Drive »).
 scripts/build-web.mjs   Prépare l'appli : www/ pour Android/iOS natif, pwa/ pour l'iPhone via Safari (--pwa).
 scripts/draw-assets.py  Dessine l'icône et l'écran de démarrage (sources dans assets/).

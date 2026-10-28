@@ -27,7 +27,7 @@ Voici l'application **Coach Tennis** pour planifier et suivre les entraînements
 - Pensez à faire de temps en temps **Réglages → Exporter un fichier de sauvegarde** (ou publiez sur Google Drive, qui garde aussi une sauvegarde). Ce fichier sert aussi à passer vos données sur un nouveau téléphone.
 
 **Mises à jour**
-- Android : installez simplement le nouveau fichier reçu, vos données sont conservées.
+- Android : quand une nouvelle version est prête, l'appli affiche « Mettre à jour » : un geste, quelques secondes, sans rien réinstaller. Vos données sont conservées. Si vous ne touchez rien, elle s'installe au prochain lancement.
 - iPhone : la mise à jour se fait toute seule à l'ouverture.
 
 Vos idées pour améliorer l'appli sont les bienvenues : répondez à ce message.
