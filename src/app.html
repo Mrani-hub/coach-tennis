@@ -148,6 +148,29 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .star:focus-visible{outline:2px solid var(--court);border-radius:4px}
 .trend{font-size:11px;font-weight:700;white-space:nowrap;min-width:52px;text-align:right}
 .trend.up{color:var(--ok)}.trend.down{color:var(--danger)}
+.evbox{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+.evr{display:flex;flex-direction:column;gap:5px;padding-bottom:9px;border-bottom:1px dashed var(--line)}.evr:last-of-type{border-bottom:0;padding-bottom:0}
+.evr-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.evn{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}
+.evn button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 0;font-weight:700;font-size:13px;cursor:pointer;min-width:0;font-variant-numeric:tabular-nums}
+.evn button.in{background:var(--court-soft);border-color:transparent}
+.evn button[aria-pressed="true"]{background:var(--court);color:var(--court-ink);border-color:var(--court)}
+.evc{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;font:inherit;font-size:14px}
+.evchips{display:flex;gap:5px;flex-wrap:wrap}
+.evchips button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
+.evchips button i,.evdot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+.evdot{margin-right:6px;vertical-align:0}
+.evchips button[aria-pressed="true"]{border-color:var(--ink);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--ink)}
+.evchart{width:100%;max-width:640px;height:auto;display:block;overflow:visible}
+.evg{stroke:var(--line);stroke-width:1}.evg.base{stroke:var(--muted);stroke-opacity:.5}
+.evax{font-size:10px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.evlab{font-size:11px;font-weight:700;fill:var(--ink)}
+.evchart [data-evpt]{cursor:pointer;outline:none}
+.evcap{min-height:1.4em;color:var(--muted)}.evcap b{color:var(--ink)}
+.evtab{overflow-x:auto}.evtab table{width:100%;border-collapse:collapse;font-size:13px}
+.evtab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:700;padding:4px 6px;border-bottom:1px solid var(--line)}
+.evtab td{padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}.evtab tr.on td{background:var(--surface-2)}
+.evtab .trend{text-align:left;min-width:0}
 .throw{display:grid;grid-template-columns:minmax(0,1fr) 92px auto;gap:6px;align-items:center}
 .throw select,.throw input{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);min-width:0;width:100%}
 .pct{position:relative}.pct::after{content:"%";position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
@@ -447,6 +470,48 @@ function tauxBlock(pid,days){
       ${never.map(t=>`<div class="lg zero"><i></i><span>${esc(t)}</span><b>0%</b><em>à programmer</em></div>`).join('')}
       ${ext.map(t=>`<div class="lg zero ext" title="${esc(extLabel(p,t))}"><i></i><span>${esc(t)}</span><b>—</b><em>${esc(extShort(p,t))}</em></div>`).join('')}</div></div>`;
 }
+/* ---- Évaluations des séances (note sur 10 par thème) ---- */
+const EVMAX=10;
+const evalsOk=s=>s&&s.evals&&Object.keys(s.evals).length>0&&s.statut!=='annulee';
+/* Séries par thème à partir d'une liste de séances {id,date,debut,evals} */
+function evalSeries(L){const R={};
+  L.filter(evalsOk).slice().sort((a,b)=>(a.date+a.debut).localeCompare(b.date+b.debut)).forEach(s=>
+    Object.entries(s.evals).forEach(([t,e])=>{if(!e||!(+e.n))return;(R[t]=R[t]||[]).push({d:s.date,n:+e.n,c:e.c||'',sid:s.id})}));
+  return R}
+function evalStats(pts){const n=pts.length,moy=pts.reduce((a,x)=>a+x.n,0)/n,last=pts[n-1];
+  const k=Math.min(3,Math.floor(n/2));let tend=null;
+  if(k){const a=pts.slice(-k).reduce((x,y)=>x+y.n,0)/k,b=pts.slice(-2*k,-k).reduce((x,y)=>x+y.n,0)/k;tend=Math.round((a-b)*10)/10}
+  return {n,moy:Math.round(moy*10)/10,last,tend,best:Math.max(...pts.map(x=>x.n))}}
+const fmtN=v=>String(v).replace('.',',');
+const tendHtml=t=>t===null?'<span class="small muted">—</span>':t>=0.5?`<span class="trend up">▲ +${fmtN(t)}</span>`:t<=-0.5?`<span class="trend down">▼ ${fmtN(t)}</span>`:`<span class="trend">= stable</span>`;
+const evCol=t=>{const i=THEMES.indexOf(t);return i<0?'var(--c9)':`var(--c${i+1})`};
+/* Bloc graphique : key = identifiant du conteneur, R = séries, sel = thème choisi ('' = tous) */
+function evalBlock(key,R,sel){
+  UI.evsrc=UI.evsrc||{};UI.evsrc[key]=R;
+  const ths=Object.keys(R).sort((a,b)=>(THEMES.indexOf(a)+99)%99-(THEMES.indexOf(b)+99)%99);
+  if(!ths.length)return '<div class="small muted">Aucune séance évaluée pour l’instant. Les notes données en fin de séance apparaîtront ici, thème par thème.</div>';
+  if(sel&&!R[sel])sel='';
+  const show=sel?[sel]:ths,all=[].concat(...show.map(t=>R[t]));
+  const dates=[...new Set(all.map(x=>x.d))].sort(),t0=parse(dates[0]),t1=parse(dates[dates.length-1]),span=Math.max(1,t1-t0);
+  const W=360,H=196,L=26,Rm=12,T=12,B=30,pw=W-L-Rm,ph=H-T-B;
+  const X=d=>dates.length===1?L+pw/2:L+(parse(d)-t0)/span*pw,Y=n=>T+ph-(n/EVMAX)*ph;
+  const grid=[0,2,4,6,8,10].map(v=>`<line x1="${L}" x2="${W-Rm}" y1="${Y(v)}" y2="${Y(v)}" class="evg${v===0?' base':''}"/><text x="${L-6}" y="${Y(v)+3.5}" text-anchor="end" class="evax">${v}</text>`).join('');
+  const nt=Math.min(dates.length,4),ticks=[...new Set(Array.from({length:nt},(_,i)=>dates[Math.round(i*(dates.length-1)/Math.max(1,nt-1))]))];
+  const xt=ticks.map(d=>{const x=X(d),a=ticks.length>1&&x<L+20?'start':x>W-Rm-20?'end':'middle';return `<text x="${a==='start'?x-4:a==='end'?x+4:x}" y="${H-10}" text-anchor="${a}" class="evax">${fmtShort(d)}</text>`}).join('');
+  const lines=show.map(t=>{const P=R[t],c=evCol(t);
+    const path=P.length>1?`<polyline points="${P.map(p=>`${X(p.d).toFixed(1)},${Y(p.n).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`:'';
+    const dots=P.map((p,i)=>`<circle cx="${X(p.d).toFixed(1)}" cy="${Y(p.n).toFixed(1)}" r="4" fill="${c}" stroke="var(--surface)" stroke-width="2"/>`).join('');
+    const last=P[P.length-1],lab=sel?`<text x="${Math.min(X(last.d),W-Rm-4)}" y="${Y(last.n)-9}" text-anchor="${X(last.d)>W-40?'end':'middle'}" class="evlab">${last.n}/10</text>`:'';
+    return path+dots+lab}).join('');
+  const hits=[].concat(...show.map(t=>R[t].map((p,i)=>`<circle cx="${X(p.d).toFixed(1)}" cy="${Y(p.n).toFixed(1)}" r="13" fill="transparent" data-evpt="${key}|${esc(t)}|${i}" tabindex="0" role="button" aria-label="${esc(t)}, ${fmtShort(p.d)} : ${p.n} sur 10"><title>${esc(t)} · ${fmtShort(p.d)} : ${p.n}/10${p.c?' · '+esc(p.c):''}</title></circle>`))).join('');
+  const chips=`<div class="evchips" role="group" aria-label="Thème affiché"><button type="button" data-evth="${key}|" aria-pressed="${!sel}">Tous</button>${ths.map(t=>`<button type="button" data-evth="${key}|${esc(t)}" aria-pressed="${t===sel}"><i style="background:${evCol(t)}"></i>${esc(t)}</button>`).join('')}</div>`;
+  const rows=ths.map(t=>{const st=evalStats(R[t]);return `<tr${t===sel?' class="on"':''}><td><i class="evdot" style="background:${evCol(t)}"></i>${esc(t)}</td><td class="num">${st.n}</td><td class="num"><b>${fmtN(st.moy)}</b></td><td class="num">${st.last.n} <span class="small muted">(${fmtShort(st.last.d)})</span></td><td>${tendHtml(st.tend)}</td></tr>`}).join('');
+  return `${chips}<svg class="evchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des notes ${sel?'en '+esc(sel):'par thème'}, sur 10">${grid}${xt}${lines}${hits}</svg>
+    <div class="evcap small" id="evcap-${key}" aria-live="polite">${sel?`Touchez un point pour voir la note et le commentaire.`:'Chaque couleur est un thème. Choisissez un thème pour le suivre seul.'}</div>
+    <div class="evtab"><table><thead><tr><th>Thème</th><th>Éval.</th><th>Moyenne</th><th>Dernière</th><th>Tendance</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="small muted">Tendance : moyenne des dernières notes comparée aux précédentes (jusqu’à 3 et 3).</div>`}
+function evalPoint(spec){const [key,t,i]=spec.split('|'),R=(UI.evsrc||{})[key],p=R&&R[t]&&R[t][+i],c=$('evcap-'+key);if(!p||!c)return;
+  c.innerHTML=`<b>${esc(t)}</b> · séance du ${fmtShort(p.d)} ${p.d.slice(0,4)} : <b class="num">${p.n}/10</b>${p.c?` · « ${esc(p.c)} »`:''}`}
 const initials=p=>((p.prenom||'?')[0]+(p.nom||'')[0]||'').toUpperCase();
 
 function seed(){
@@ -984,6 +1049,17 @@ function setStar(pid,i,n){
   toast(`${t} : ${nv}/5`);
 }
 
+function evalForm(x,pp,duo){if(!pp||x.statut==='annulee'||x.statut==='absent')return '';
+  const E=x.evals||{},ths=thList(x),fut=x.date>today();
+  const prev=t=>{const L=S.seances.filter(y=>y.joueurId===x.joueurId&&y.id!==x.id&&evalsOk(y)&&y.evals[t]&&(y.date+y.debut)<(x.date+x.debut)).sort((a,b)=>(b.date+b.debut).localeCompare(a.date+a.debut));return L[0]?{n:L[0].evals[t].n,d:L[0].date}:null};
+  const sh=pp.partage&&pp.partage.actif;
+  return `<div class="evbox"><div><h3 style="margin-bottom:2px">Évaluation par thème${duo?` · ${esc(pp.prenom)}`:''}</h3>
+    <p class="small muted" style="margin:0">${fut?'À remplir après la séance. ':''}Note de 1 à 10 pour chaque thème travaillé, commentaire facultatif. ${sh?`${esc(pp.prenom)} la recevra dans son espace joueur.`:`L’espace joueur de ${esc(pp.prenom)} n’est pas activé : l’évaluation reste dans votre suivi.`}</p></div>
+    ${ths.map((th,k)=>{const e=E[th.t]||{},pv=prev(th.t);return `<div class="evr"><div class="evr-h"><b>${esc(th.t)} <span class="small muted" style="font-weight:400">· ${th.w} %</span></b>
+      <span class="small muted num">${pv?`Précédente : ${pv.n}/10 (${fmtShort(pv.d)}) · `:''}Note : <b id="evo-${x.id}-${k}" style="color:var(--ink)">${e.n?e.n+'/10':'—'}</b></span></div>
+      <div class="evn" data-evn="${x.id}|${k}" role="group" aria-label="Note de ${esc(th.t)} sur 10">${Array.from({length:EVMAX},(_,j)=>j+1).map(n=>`<button type="button" data-n="${n}" aria-pressed="${n===e.n}" class="${e.n&&n<e.n?'in':''}">${n}</button>`).join('')}</div>
+      <input class="evc" data-evc="${x.id}|${k}" maxlength="300" value="${esc(e.c||'')}" placeholder="Commentaire sur ${esc(th.t.toLowerCase())} (facultatif)" aria-label="Commentaire ${esc(th.t)}"></div>`}).join('')}
+    ${x.evalMaj?`<div class="small muted">Dernière évaluation enregistrée le ${fmtShort(new Date(x.evalMaj).toISOString().slice(0,10))}.</div>`:''}</div>`}
 function openSeance(id){
   const s=S.seances.find(x=>x.id===id);if(!s)return;
   const grp=[s,...duoSiblings(s)],ps=grp.map(x=>S.joueurs.find(p=>p.id===x.joueurId)),p=ps[0],duo=grp.length>1;
@@ -997,14 +1073,29 @@ function openSeance(id){
   ${grp.map((x,i)=>{const r=repCoach(x.joueurId,x.id,x.date,x.debut),pp=ps[i];
     return `<div class="list" style="gap:6px">${duo?`<b>${esc(pName(pp))}</b>`:''}${r?`<div class="row" style="gap:6px"><span class="small">Réponse du joueur :</span> ${repChipC(r)}${r.m?` <span class="small muted">« ${esc(r.m)} »</span>`:''}</div>`:''}
       <div><h3 style="margin-bottom:6px">Statut${duo?` · ${esc(pp?pp.prenom:'')}`:''}</h3><div class="seg" data-stseg="${x.id}">${Object.entries(STATUTS).map(([k,l])=>`<button type="button" data-st="${k}" aria-pressed="${x.statut===k}">${l}</button>`).join('')}</div></div></div>`}).join('')}
+  ${grp.map((x,i)=>evalForm(x,ps[i],duo)).join('')}
   ${p&&!duo?`<hr class="sep"><h2 style="font-size:22px">Fiche du joueur</h2>${ficheHtml(p,thList(s).map(x=>x.t))}
   <div><h3 style="margin-bottom:8px">Dernières séances</h3>${recents.length?`<div class="list" style="gap:6px">${recents.map(r=>`<div class="recap"><b class="num">${fmtShort(r.date)}</b> · ${esc(thTxt(r))}${r.notes?`<br><span class="small muted">${esc(r.notes)}</span>`:''}</div>`).join('')}</div>`:'<div class="muted small">Première séance faite avec ce joueur.</div>'}</div><hr class="sep">`:''}
   ${duo?ps.map(pp=>pp?`<details class="prep"><summary>Fiche de ${esc(pName(pp))}</summary>${ficheHtml(pp,thList(s).map(x=>x.t))}</details>`:'').join(''):''}
   <label class="fl">Compte rendu${duo?' (commun aux deux joueurs)':''}<textarea id="oN" placeholder="Points travaillés, progrès, consignes…">${esc(s.notes)}</textarea></label>
-  <div class="row"><button class="btn pri" type="button" id="oSave">Enregistrer</button><button class="btn" type="button" id="oEdit">Modifier</button><button class="btn" type="button" id="oDup">Copier semaine suivante</button><span style="flex:1"></span><button class="btn danger" type="button" id="oDel">Supprimer</button></div>`);
+  <div class="row"><button class="btn pri" type="button" id="oSave">${grp.some(x=>{const q=ps[grp.indexOf(x)];return q&&q.partage&&q.partage.actif})?'Enregistrer et envoyer':'Enregistrer'}</button><button class="btn" type="button" id="oEdit">Modifier</button><button class="btn" type="button" id="oDup">Copier semaine suivante</button><span style="flex:1"></span><button class="btn danger" type="button" id="oDel">Supprimer</button></div>`);
   const st={};grp.forEach(x=>st[x.id]=x.statut);
+  const evs={};grp.forEach(x=>{evs[x.id]=JSON.parse(JSON.stringify(x.evals||{}))});
+  sheetEl.querySelectorAll('[data-evn]').forEach(box=>box.onclick=ev=>{const b=ev.target.closest('[data-n]');if(!b)return;const[sid,k]=box.dataset.evn.split('|'),t=thList(grp.find(y=>y.id===sid))[+k].t,n=+b.dataset.n;
+    const E=evs[sid];E[t]=E[t]||{};E[t].n=E[t].n===n?0:n;if(!E[t].n&&!E[t].c)delete E[t];
+    box.querySelectorAll('[data-n]').forEach(y=>{const v=+y.dataset.n,cur=E[t]?E[t].n:0;y.setAttribute('aria-pressed',String(v===cur));y.classList.toggle('in',!!cur&&v<cur)});
+    const o=$('evo-'+sid+'-'+k);if(o)o.textContent=E[t]&&E[t].n?`${E[t].n}/10`:'—'});
+  sheetEl.querySelectorAll('[data-evc]').forEach(inp=>inp.oninput=()=>{const[sid,k]=inp.dataset.evc.split('|'),t=thList(grp.find(y=>y.id===sid))[+k].t,E=evs[sid],v=inp.value.trim();
+    if(v){E[t]=E[t]||{n:0};E[t].c=v}else if(E[t]){delete E[t].c;if(!E[t].n)delete E[t]}});
   sheetEl.querySelectorAll('[data-stseg]').forEach(seg=>seg.onclick=ev=>{const b=ev.target.closest('[data-st]');if(!b)return;st[seg.dataset.stseg]=b.dataset.st;seg.querySelectorAll('button').forEach(y=>y.setAttribute('aria-pressed',y===b))});
-  $('oSave').onclick=()=>{const n=$('oN').value.trim();grp.forEach(x=>{x.statut=st[x.id];x.notes=n});save();closeSheet();render();toast('Séance mise à jour');apresPlanning()};
+  $('oSave').onclick=()=>{const n=$('oN').value.trim();let nEv=[];
+    grp.forEach(x=>{x.statut=st[x.id];x.notes=n;
+      const E={};Object.entries(evs[x.id]).forEach(([t,e])=>{if(e&&+e.n)E[t]=e.c?{n:+e.n,c:e.c.slice(0,300)}:{n:+e.n}});
+      if(JSON.stringify(E)!==JSON.stringify(x.evals||{})){if(Object.keys(E).length){x.evals=E;x.evalMaj=Date.now();nEv.push(x)}else{delete x.evals;delete x.evalMaj}}
+      if(x.evals&&x.statut==='planifiee'&&x.date<=today())x.statut='faite'});
+    save();closeSheet();render();
+    const env=nEv.filter(x=>{const q=S.joueurs.find(y=>y.id===x.joueurId);return q&&q.partage&&q.partage.actif});
+    toast(nEv.length?(env.length&&driveReady()?`Évaluation enregistrée et envoyée à ${env.map(x=>S.joueurs.find(y=>y.id===x.joueurId).prenom).join(' et ')}`:'Évaluation enregistrée'):'Séance mise à jour');apresPlanning()};
   $('oEdit').onclick=()=>formSeance(s);
   $('oDup').onclick=()=>{const nd=addDays(s.date,7),duoId=duo?uid():null;grp.forEach(x=>{const c={...x,themes:thList(x).map(y=>({...y})),id:uid(),date:nd,statut:'planifiee',notes:''};if(duoId)c.duo=duoId;else delete c.duo;S.seances.push(c)});save();closeSheet();render();toast(`Copiée au ${fmtShort(nd)}`);apresPlanning()};
   $('oDel').onclick=function(){if(this.dataset.armed){const ids=grp.map(x=>x.id);S.seances=S.seances.filter(x=>!ids.includes(x.id));save();closeSheet();render();toast(duo?'Séance à deux supprimée':'Séance supprimée');apresPlanning()}else{this.dataset.armed=1;this.textContent=duo?'Supprimer pour les deux joueurs':'Confirmer la suppression';this.classList.add('solid')}};
@@ -1062,6 +1153,8 @@ function openJoueur(id){
     <div class="kpi"><b>${abs}</b><span>absence${abs>1?'s':''}</span></div><div class="kpi"><b>${tot?Math.round(pr/tot*100)+'%':'—'}</b><span>présence collectif</span></div></div>
   ${espaceJoueurHtml(p)}
   ${ficheHtml(p,[],true)}
+  <div><h3 style="margin-bottom:4px">Suivi des évaluations</h3><p class="small muted" style="margin:0 0 8px">Notes sur 10 données en fin de séance, thème par thème${p.partage&&p.partage.actif?' (visibles aussi par le joueur)':''}.</p>
+    <div id="ev-c-${p.id}" class="list" style="gap:10px">${evalBlock('c-'+p.id,evalSeries(S.seances.filter(s=>s.joueurId===p.id)),'')}</div></div>
   <div>${matchSection(p)}</div>
   ${extHtml(p)}
   <div><h3 style="margin-bottom:4px">Historique de classement ${esc(instTxt())}</h3><p class="small muted" style="margin:0 0 8px">${esc(S.instanceNom||'')}${S.pays?` · ${esc(S.pays)}`:''}</p><div id="cl-${p.id}">${clHtml(p)}</div></div>
@@ -1450,6 +1543,25 @@ function buildPdf(p){
     const ext=THEMES.filter(th=>!isCT(th));
     if(ext.length){font(8.4,'italic',MU);const l=doc.splitTextToSize(T('Hors séances du coach : '+ext.map(th=>`${th} (${extLabel(p,th)})`).join(' ; ')),W-2*M);need(l.length*4);doc.text(l,M,y+2);y+=l.length*4+3}}
 
+  /* Suivi des évaluations */
+  const ER=evalSeries(S.seances.filter(s=>s.joueurId===p.id)),eTh=Object.keys(ER).sort((a,b)=>THEMES.indexOf(a)-THEMES.indexOf(b));
+  if(eTh.length){need(80);title('Suivi des évaluations (notes sur 10)');
+    const all=[].concat(...eTh.map(k=>ER[k])),ds=[...new Set(all.map(x=>x.d))].sort(),t0=parse(ds[0]),sp=Math.max(1,parse(ds[ds.length-1])-t0);
+    const ch=46,cx=M+8,cw=W-2*M-10;need(ch+18);const cy=y+2;
+    const X=d=>ds.length===1?cx+cw/2:cx+(parse(d)-t0)/sp*cw,Y=n=>cy+ch-n/10*ch;
+    doc.setLineWidth(.15);[0,2,4,6,8,10].forEach(v=>{doc.setDrawColor(...(v?LN:MU));doc.line(cx,Y(v),cx+cw,Y(v));font(7,'normal',MU);doc.text(String(v),cx-2,Y(v)+1,{align:'right'})});
+    [...new Set([0,1,2,3].map(i=>ds[Math.round(i*(ds.length-1)/3)]))].forEach(d=>{font(7,'normal',MU);doc.text(fmtShort(d),X(d),cy+ch+4,{align:'center'})});
+    eTh.forEach(k=>{const c=PAL[Math.max(0,THEMES.indexOf(k))%9],P=ER[k];doc.setDrawColor(...c);doc.setFillColor(...c);doc.setLineWidth(.6);
+      for(let i=1;i<P.length;i++)doc.line(X(P[i-1].d),Y(P[i-1].n),X(P[i].d),Y(P[i].n));P.forEach(q=>doc.circle(X(q.d),Y(q.n),.9,'F'))});
+    y=cy+ch+8;let lx=M;font(7.8);eTh.forEach(k=>{const c=PAL[Math.max(0,THEMES.indexOf(k))%9],w=doc.getTextWidth(T(k))*1+8;if(lx+w>W-M){lx=M;y+=4.5}
+      doc.setFillColor(...c);doc.circle(lx+1.3,y-1,1.3,'F');font(7.8);doc.text(T(k),lx+3.6,y);lx+=doc.getTextWidth(T(k))+8});y+=4;
+    table({head:[['Thème','Évaluations','Moyenne','Dernière note','Meilleure','Tendance']],body:eTh.map(k=>{const st=evalStats(ER[k]);
+      return [T(k),String(st.n),`${fmtN(st.moy)}/10`,`${st.last.n}/10 (${fmtShort(st.last.d)})`,`${st.best}/10`,st.tend===null?'-':st.tend>=.5?`en hausse (+${fmtN(st.tend)})`:st.tend<=-.5?`en baisse (${fmtN(st.tend)})`:'stable']}),
+      columnStyles:{0:{fontStyle:'bold'},1:{halign:'center'},2:{halign:'center'},4:{halign:'center'}}});
+    const com=S.seances.filter(s=>s.joueurId===p.id&&evalsOk(s)).sort((a,b)=>(b.date+b.debut).localeCompare(a.date+a.debut)).slice(0,6)
+      .map(s=>[fmtShort(s.date)+' '+s.date.slice(2,4),T(Object.entries(s.evals).map(([k,e])=>`${k} ${e.n}/10${e.c?' ('+e.c+')':''}`).join(' ; '))]);
+    if(com.length){font(8.6,'bold',MU);need(8);doc.text(T('Dernières séances évaluées'),M,y+2);y+=4;table({head:[['Date','Notes et commentaires']],body:com,columnStyles:{0:{cellWidth:20}}})}}
+
   /* Priorités */
   const pri=prioThemes(p.id).slice(0,3);
   if(pri.length){title('Thèmes à programmer en priorité');
@@ -1580,7 +1692,7 @@ function payloadJoueur(p){
     coach:{nom:S.coach||'',club:S.club||'',instance:instTxt(),tel:S.tel||''},
     joueur:{id:p.id,prenom:p.prenom,nom:p.nom,categorie:categorie(p.naissance),niveau:p.niveau,objectifs:p.notes||'',classements:p.classements||[]},
     themesCoach:CT(),niveaux:p.niveaux||{},evol:(p.evol||[]).slice(-30),externes:Object.fromEntries(THEMES.filter(x=>!isCT(x)).map(x=>[x,extLabel(p,x)])),
-    seances:S.seances.filter(s=>s.joueurId===p.id&&s.date>=addDays(t,-180)).map(s=>({id:s.id,avec:duoSiblings(s).map(x=>{const q=S.joueurs.find(y=>y.id===x.joueurId);return q?q.prenom+' '+q.nom:''}).filter(Boolean).join(', '),date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
+    seances:S.seances.filter(s=>s.joueurId===p.id&&(s.date>=addDays(t,-180)||(evalsOk(s)&&s.date>=addDays(t,-730)))).map(s=>({...(evalsOk(s)?{evals:s.evals,evalMaj:s.evalMaj||0}:{}),id:s.id,avec:duoSiblings(s).map(x=>{const q=S.joueurs.find(y=>y.id===x.joueurId);return q?q.prenom+' '+q.nom:''}).filter(Boolean).join(', '),date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
     cours,groupes:gs.map(g=>{const ec=S.ecoles.find(x=>x.id===g.ecoleId)||{};return {nom:g.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:g.niveau||'',creneaux:g.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court}))}}),
     conges:(S.conges||[]).filter(c=>c.fin>=t).map(c=>({debut:c.debut,fin:c.fin,motif:c.motif||''})),
     matchs:matchesOf(p.id).slice(0,20).map(({joueurId,...x})=>x),taux:{m,tot,n}}}
@@ -1589,20 +1701,25 @@ function payloadJoueur(p){
 function snapJoueur(p){const t=today(),m={};
   S.seances.forEach(s=>{if(s.joueurId===p.id&&s.date>=t&&s.statut!=='annulee')m[s.id]=[s.date,s.debut,s.court,'i']});
   for(let i=0;i<=63;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.type==='col'&&!e.off&&e.ref.joueurIds.includes(p.id))m[e.key]=[d,e.debut,e.court,'c',e.ref.nom]})}
-  return {m,end:addDays(t,63)}}
-function diffNotif(old,cur){const t=today(),nv=[],md=[],an=[];
+  const ev={};S.seances.forEach(s=>{if(s.joueurId===p.id&&evalsOk(s))ev[s.id]=[s.date,s.evalMaj||0]});
+  return {m,end:addDays(t,63),ev}}
+/* Évaluations nouvelles ou modifiées depuis la dernière publication */
+function diffEval(old,cur){const o=(old&&old.ev)||{},L=[];
+  Object.entries((cur&&cur.ev)||{}).forEach(([k,v])=>{if(!o[k]||o[k][1]!==v[1])L.push(v)});return L.sort((a,b)=>a[0].localeCompare(b[0]))}
+function diffNotif(old,cur){const t=today(),nv=[],md=[],an=[],evn=diffEval(old,cur);
   Object.entries(cur.m).forEach(([k,v])=>{const o=old.m[k];if(!o){if(v[3]==='i'||v[0]<=old.end)nv.push(v)}else if(o[0]!==v[0]||o[1]!==v[1]||o[2]!==v[2])md.push(v)});
   Object.entries(old.m).forEach(([k,o])=>{if(!cur.m[k]&&o[0]>=t)an.push(o)});
-  const tot=nv.length+md.length+an.length;if(!tot)return null;
+  const tot=nv.length+md.length+an.length;
+  if(!tot){if(!evn.length)return null;let txt=evn.length===1?`Nouvelle évaluation de ta séance du ${JC[dow(evn[0][0])].toLowerCase()}. ${fmtShort(evn[0][0])}`:`${evn.length} nouvelles évaluations de tes séances`;return txt}
   const lab=v=>`${v[3]==='c'?v[4]+', ':''}${JC[dow(v[0])].toLowerCase()}. ${fmtShort(v[0])} à ${v[1]}`;
   const [L,un,plus]=nv.length?[nv,'Nouvelle séance','nouvelles séances programmées']:md.length?[md,'Séance modifiée','séances modifiées']:[an,'Séance annulée','séances annulées'];
-  let txt=L.length===1?`${un} : ${lab(L[0])}`:`${L.length} ${plus}`;const autres=tot-L.length;if(autres)txt+=` (+${autres} changement${autres>1?'s':''})`;
+  let txt=L.length===1?`${un} : ${lab(L[0])}`:`${L.length} ${plus}`;const autres=tot-L.length;if(autres)txt+=` (+${autres} changement${autres>1?'s':''})`;if(evn.length)txt+=` et ${evn.length>1?evn.length+' évaluations':'une évaluation'}`;
   const enc=new TextEncoder();while(enc.encode(txt).length>110)txt=txt.slice(0,-2)+'…';return txt}
 
 /* Après une modification du planning : publier tout de suite pour les joueurs concernés */
 let apresTimer=null;
 function apresPlanning(){if(!driveReady())return;clearTimeout(apresTimer);apresTimer=setTimeout(()=>{
-  const L=partages().filter(p=>p.partage.fileId&&JSON.stringify(snapJoueur(p).m)!==JSON.stringify((p.partage.snap||{}).m));if(!L.length)return;
+  const L=partages().filter(p=>{if(!p.partage.fileId)return false;const c=snapJoueur(p),o=p.partage.snap||{};return JSON.stringify(c.m)!==JSON.stringify(o.m)||diffEval(o,c).length>0});if(!L.length)return;
   const noms=L.map(p=>p.prenom).join(', ');
   if(gTok&&gTok.exp>Date.now()+60000){publier(false,false);return}
   toast(`Publication pour ${noms}…`);publier(true,false)},400)}
@@ -1769,7 +1886,12 @@ function vJProg(){
   ${gs.length?`<section class="list"><h3>Mes cours collectifs</h3>${gs.map(g=>`<div class="panel"><b>${esc(g.nom)}</b> <span class="small muted">${esc(g.ecole)}${g.lieu?' · '+esc(g.lieu):''}${g.niveau?' · '+esc(g.niveau):''}</span><div class="slots">${g.creneaux.map(c=>`<span class="slot num">${JOURS[c.jour]} ${c.debut}–${fromMin(toMin(c.debut)+c.duree)} · ${esc(c.court)}</span>`).join('')}</div></div>`).join('')}</section>`:''}`}
 function vJProgres(){
   const {list}=srcSel();if(!list.length)return vJVide();
-  return jHeader()+list.map(s=>{const d=s.data,ths=THEMES.filter(x=>d.niveaux[x]||d.themesCoach.includes(x));
+  return jHeader()+bandeauNouveau(list)+list.map((s,li)=>{const d=s.data,ths=THEMES.filter(x=>d.niveaux[x]||d.themesCoach.includes(x));
+    const evS=(d.seances||[]).filter(evalsOk),R=evalSeries(evS),evL=evS.slice().sort((a,b)=>(b.date+b.debut).localeCompare(a.date+a.debut)).slice(0,8);
+    const evHtml=`<h3 style="margin-top:6px">Mes évaluations</h3><div class="small muted">Notes sur 10 données par ton coach après chaque séance, thème par thème.</div>
+      <div id="ev-j-${li}" class="list" style="gap:10px">${evalBlock('j-'+li,R,'')}</div>
+      ${evL.length?`<h3 style="margin-top:6px">Dernières séances évaluées</h3>${evL.map(x=>`<div class="recap"><b class="num">${fmtShort(x.date)} ${x.date.slice(0,4)}</b>${x.avec?` <span class="small muted">· avec ${esc(x.avec)}</span>`:''}
+        <div class="list" style="gap:3px;margin-top:4px">${Object.entries(x.evals).filter(([t,e])=>e&&e.n).map(([t,e])=>`<div class="small"><i class="evdot" style="background:${evCol(t)}"></i><b>${esc(t)}</b> : <b class="num">${e.n}/10</b>${e.c?` · ${esc(e.c)}`:''}</div>`).join('')}</div></div>`).join('')}`:''}`;
     const tx=d.taux||{m:{},tot:0},items=THEMES.map((x,i)=>({x,i,v:tx.m[x]||0})).filter(o=>o.v>0).sort((a,b)=>b.v-a.v);
     const cr=d.seances.filter(x=>x.date<=today()&&x.notes&&x.statut!=='annulee').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,15);
     return `<section class="list"><h3>Mes niveaux${list.length>1?` · Coach ${esc(d.coach.nom)}`:''}</h3>
@@ -1777,6 +1899,7 @@ function vJProgres(){
       <div class="lvs">${ths.map(x=>{const v=d.niveaux[x]||0,ev=d.evol.filter(e=>e.t===x).slice(-1)[0];
         return `<div class="lv"><span class="lv-t">${esc(x)}${d.externes[x]&&d.externes[x]!=='non suivi'?` <span class="chip ext">${esc(d.externes[x])}</span>`:''}</span><span class="sstars" style="font-size:18px" aria-label="${v} sur 5">${'★'.repeat(v)}<i>${'★'.repeat(5-v)}</i></span>
         ${ev?`<span class="trend ${ev.to>ev.from?'up':'down'}">${ev.to>ev.from?'▲':'▼'} ${fmtShort(ev.d)}</span>`:'<span class="trend"></span>'}</div>`}).join('')}</div>
+      ${evHtml}
       ${items.length?`<h3 style="margin-top:6px">Temps travaillé par thème</h3><div class="small muted">${tx.n} séance${tx.n>1?'s':''} faite${tx.n>1?'s':''} · ${fmtH(Math.round(tx.tot))}</div>
         <div class="bars">${items.map(o=>`<div class="bar"><span>${esc(o.x)}</span><span class="tr"><i style="width:${o.v/tx.tot*100}%;background:var(--c${o.i+1})"></i></span><b class="num">${Math.round(o.v/tx.tot*100)}%</b></div>`).join('')}</div>`:''}
       ${d.joueur.classements.length?`<h3 style="margin-top:6px">Classement ${esc(d.coach.instance||'')}</h3><div class="list" style="gap:4px">${d.joueur.classements.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(c=>`<div class="small num"><b>${fmtShort(c.date)} ${c.date.slice(0,4)}</b> · ${esc(c.valeur)}${c.points?` · ${esc(c.points)} pts`:''}</div>`).join('')}</div>`:''}
@@ -1972,8 +2095,10 @@ setInterval(()=>{if(APPMODE==='coach'&&!document.hidden&&CFG.relaisUrl)chargerRe
 
 /* ============ Interactions ============ */
 document.addEventListener('click',ev=>{
+  const pt=ev.target.closest('[data-evpt]');if(pt)return evalPoint(pt.dataset.evpt);
   const t=ev.target.closest('button');if(!t)return;const d=t.dataset;
   if(d.tab)return go(d.tab);
+  if(d.evth!==undefined){const i=d.evth.indexOf('|'),key=d.evth.slice(0,i),th=d.evth.slice(i+1),b=$('ev-'+key);if(b&&UI.evsrc&&UI.evsrc[key])b.innerHTML=evalBlock(key,UI.evsrc[key],th);return}
   if('publish' in d)return publier(true);
   if('maj' in d)return installerMaj();
   if('majlater' in d){try{localStorage.setItem('ct-maj-plus-tard',MAJ.version)}catch(e){}return render()}
@@ -2084,7 +2209,7 @@ document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='rOn
 document.addEventListener('change',async ev=>{const id=ev.target.id;if(id!=='jrOn'&&id!=='jrAv')return;
   const on=$('jrOn').checked;if(on&&!(await Native.notifPermission(true))){$('jrOn').checked=false;$('jrMsg').textContent='Notifications refusées : autorisez-les dans les réglages du téléphone.';return}
   PJ.rappels={on,avant:+$('jrAv').value};saveJ();$('jrMsg').textContent=on?'Rappels actifs.':'Rappels désactivés.'});
-document.addEventListener('keydown',ev=>{if(ev.key!=='Enter')return;const m={jAdd:'jAddBtn',jPinIn:'jPinOk',pinN2:'jPinCreate',jForgotCode:'jForgotOk'}[ev.target.id];if(m&&$(m)){ev.preventDefault();$(m).click()}});
+document.addEventListener('keydown',ev=>{if(ev.key!=='Enter')return;if(ev.target.dataset&&ev.target.dataset.evpt){ev.preventDefault();return evalPoint(ev.target.dataset.evpt)}const m={jAdd:'jAddBtn',jPinIn:'jPinOk',pinN2:'jPinCreate',jForgotCode:'jForgotOk'}[ev.target.id];if(m&&$(m)){ev.preventDefault();$(m).click()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
 /* Session au démarrage : lien joueur reçu, ou choix coach / joueur */
 const lienRecu=parseCode(location.hash);
