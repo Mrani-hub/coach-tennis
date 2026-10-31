@@ -514,12 +514,51 @@ function evalPoint(spec){const [key,t,i]=spec.split('|'),R=(UI.evsrc||{})[key],p
   c.innerHTML=`<b>${esc(t)}</b> · séance du ${fmtShort(p.d)} ${p.d.slice(0,4)} : <b class="num">${p.n}/10</b>${p.c?` · « ${esc(p.c)} »`:''}`}
 const initials=p=>((p.prenom||'?')[0]+(p.nom||'')[0]||'').toUpperCase();
 
-function seed(){
-  const t=today(), m=monday(t), d=(w,j)=>addDays(m,(w*7)+j-1);
-  const J=[['Yassine','Benali','2014-03-12','Avancé','0661 23 45 10'],['Salma','El Idrissi','2016-06-02','Intermédiaire','0662 18 77 41'],
+const SEED_J=[['Yassine','Benali','2014-03-12','Avancé','0661 23 45 10'],['Salma','El Idrissi','2016-06-02','Intermédiaire','0662 18 77 41'],
     ['Adam','Tazi','2012-09-21','Compétition','0670 55 12 08'],['Lina','Chraibi','2015-01-30','Intermédiaire','0661 90 33 27'],
     ['Rayan','Alaoui','2013-11-05','Avancé','0668 41 02 66'],['Inès','Berrada','2017-04-17','Débutant','0663 72 19 54'],
-    ['Mehdi','Kettani','2011-07-08','Compétition','0677 30 88 12'],['Nour','Sefrioui','2018-10-23','Débutant','0665 04 61 39']]
+    ['Mehdi','Kettani','2011-07-08','Compétition','0677 30 88 12'],['Nour','Sefrioui','2018-10-23','Débutant','0665 04 61 39']];
+const SEED_ECOLES=['École de tennis du club','Centre de formation Jeunes'];
+/* ---- Données d'exemple : repérage et retrait (sans toucher aux données saisies par le coach) ---- */
+const normNom=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+function demoInfo(){
+  const js=S.joueurs.filter(p=>SEED_J.some(([pr,no,nai,niv,tel])=>normNom(p.prenom)===normNom(pr)&&normNom(p.nom)===normNom(no)&&(p.tel||'')===tel));
+  const ec=S.ecoles.filter(e=>SEED_ECOLES.includes(e.nom));
+  const ids=js.map(p=>p.id),gs=S.groupes.filter(g=>ec.some(e=>e.id===g.ecoleId));
+  const ss=S.seances.filter(x=>ids.includes(x.joueurId)),ms=(S.matchs||[]).filter(m=>ids.includes(m.joueurId)||m.advClub==='Club exemple');
+  const cg=(S.conges||[]).filter(c=>/\(exemple\)/.test(c.motif||''));
+  return {js,ec,gs,ss,ms,cg,n:js.length+ec.length+gs.length+ss.length+ms.length+cg.length}}
+function retirerDemo(){const D=demoInfo();if(!D.n)return 0;
+  const jid=new Set(D.js.map(p=>p.id)),eid=new Set(D.ec.map(e=>e.id)),gid=new Set(D.gs.map(g=>g.id)),sid=new Set(D.ss.map(x=>x.id)),mid=new Set(D.ms.map(m=>m.id)),cid=new Set(D.cg.map(c=>c.id));
+  S.joueurs=S.joueurs.filter(p=>!jid.has(p.id));S.ecoles=S.ecoles.filter(e=>!eid.has(e.id));S.groupes=S.groupes.filter(g=>!gid.has(g.id));
+  S.groupes.forEach(g=>g.joueurIds=g.joueurIds.filter(i=>!jid.has(i)));
+  S.seances=S.seances.filter(x=>!sid.has(x.id));S.matchs=(S.matchs||[]).filter(m=>!mid.has(m.id));S.conges=(S.conges||[]).filter(c=>!cid.has(c.id));
+  [S.presences,S.annulations].forEach(o=>Object.keys(o||{}).forEach(k=>{if(gid.has(k.split('|')[0]))delete o[k]}));
+  S.demo=false;return D.n}
+/* ---- Import d'une liste d'école (fichier « liste » : école, groupes et joueurs) ----
+   Les joueurs déjà présents (même nom et prénom) sont rattachés à leur groupe, sans doublon :
+   leur historique et leur espace joueur sont conservés. */
+function importListe(o){
+  const L=o.joueurs||[],find=j=>S.joueurs.find(p=>(normNom(p.prenom)===normNom(j.prenom)&&normNom(p.nom)===normNom(j.nom))||(normNom(p.prenom+' '+p.nom)===normNom(j.nom+' '+j.prenom)));
+  const deja=L.filter(find),D=demoInfo(),ec0=S.ecoles.find(e=>normNom(e.nom)===normNom(o.ecole.nom));
+  openSheet(`${head('Importer une liste')}
+    <div class="recap"><b>École ${esc(o.ecole.nom)}</b>${ec0?' (déjà présente : elle sera complétée)':''}<br>${o.groupes.map(g=>`${esc(g.nom)} : ${g.joueurs.length} joueur${g.joueurs.length>1?'s':''} · ${g.creneaux.map(c=>`${JOURS[c.jour].slice(0,3).toLowerCase()}. ${c.debut}–${fromMin(toMin(c.debut)+c.duree)}`).join(', ')}`).join('<br>')}</div>
+    <div class="small">${L.length} joueurs : <b>${L.length-deja.length}</b> nouveaux${deja.length?`, <b>${deja.length}</b> déjà dans l’appli (${deja.map(j=>esc(j.prenom+' '+j.nom)).join(', ')}) : rattachés à leur groupe, avec leur historique et leur espace joueur`:''}.</div>
+    ${D.n?`<label class="small" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="impDemo" checked style="margin-top:3px"><span><b>Effacer les données d’exemple</b> : ${D.js.length} joueurs fictifs, ${D.ec.length} écoles et ${D.gs.length} groupes d’exemple, ${D.ss.length} séances, ${D.ms.length} match${D.ms.length>1?'s':''}${D.cg.length?', le congé d’exemple':''}. Vos propres saisies ne sont pas touchées.</span></label>`:''}
+    <div class="small muted">Dates de naissance et téléphones des parents sont à compléter dans la fiche de chaque joueur.</div>
+    <div class="row"><button class="btn pri" type="button" id="impGo">Importer</button><button class="btn" type="button" data-close>Annuler</button></div>`);
+  $('impGo').onclick=()=>{let nd=0;if($('impDemo')&&$('impDemo').checked)nd=retirerDemo();
+    let ec=S.ecoles.find(e=>normNom(e.nom)===normNom(o.ecole.nom));if(!ec){ec={id:uid(),nom:o.ecole.nom,lieu:o.ecole.lieu||''};S.ecoles.push(ec)}
+    let nn=0,nr=0;
+    const court=S.courts[0]||'Court 1';o.groupes.forEach(G=>{let g=S.groupes.find(x=>x.ecoleId===ec.id&&normNom(x.nom)===normNom(G.nom));
+      if(!g){g={id:uid(),ecoleId:ec.id,nom:G.nom,niveau:G.niveau||'',joueurIds:[],creneaux:G.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court||court})),debutPeriode:today(),finPeriode:''};S.groupes.push(g)}
+      G.joueurs.forEach(j=>{let p=find(j);if(p)nr++;else{p={id:uid(),prenom:j.prenom,nom:j.nom,naissance:'',niveau:NIVEAUX.includes(j.niveau)?j.niveau:NIVEAUX.includes(G.niveauJoueurs)?G.niveauJoueurs:NIVEAUX[0],tel:'',notes:'',niveaux:{},evol:[],classements:[],externes:{}};S.joueurs.push(p);nn++}
+        if(!g.joueurIds.includes(p.id))g.joueurIds.push(p.id)})});
+    S.demo=false;save();closeSheet();render();apresPlanning();
+    toast(`${nn} joueur${nn>1?'s':''} ajouté${nn>1?'s':''}${nr?`, ${nr} rattaché${nr>1?'s':''}`:''}${nd?' · exemple effacé':''}`)}}
+function seed(){
+  const t=today(), m=monday(t), d=(w,j)=>addDays(m,(w*7)+j-1);
+  const J=SEED_J
     .map(([prenom,nom,naissance,niveau,tel],k)=>{const base={'Débutant':1,'Intermédiaire':2,'Avancé':3,'Compétition':4}[niveau];
       const niveaux={};THEMES.forEach((t,i)=>niveaux[t]=Math.max(1,Math.min(5,base+[1,0,-1,0][(i+k)%4])));
       return {id:uid(),prenom,nom,naissance,niveau,tel,classement:'',notes:'',niveaux,evol:[]}});
@@ -821,12 +860,13 @@ function vReglages(){
     <span id="rMsg" class="small muted"></span></div>`:''}
   ${partageReglagesHtml()}
   <div class="panel list"><h3>Sauvegarde</h3>
-    <p class="small muted" style="margin:0">Les données restent sur cet appareil. Exportez un fichier de sauvegarde pour les conserver ou les transférer sur un autre téléphone, puis importez-le pour les restaurer. Le copier-coller fonctionne aussi.</p>
+    <p class="small muted" style="margin:0">Les données restent sur cet appareil. Exportez un fichier de sauvegarde pour les conserver ou les transférer sur un autre téléphone, puis importez-le pour les restaurer. Le copier-coller fonctionne aussi. « Importer un fichier » accepte aussi une liste d’école (groupes et joueurs), ajoutée sans effacer vos données.</p>
     <div class="row"><button class="btn pri" type="button" id="fileBk">Exporter un fichier de sauvegarde</button><button class="btn" type="button" id="loadBk">Importer un fichier</button><button class="btn" type="button" id="copyBk">Copier la sauvegarde</button></div>
     <label class="fl">Coller une sauvegarde<textarea id="bkIn" placeholder='{"v":1, ...}'></textarea></label>
     <div class="row"><button class="btn" type="button" id="restoreBk">Restaurer</button><span id="bkMsg" class="small"></span></div>
   </div>
   <div class="panel list"><h3>Réinitialiser</h3>
+    ${demoInfo().n?'<div class="row"><button class="btn pri" type="button" id="unDemo">Effacer seulement les données d’exemple</button><span class="small muted">joueurs fictifs, écoles, séances et match d’exemple ; vos saisies sont gardées</span></div>':''}
     <div class="row"><button class="btn danger" type="button" id="wipe">Vider toutes les données</button><button class="btn" type="button" id="reseed">Recharger l’exemple</button></div>
     <div id="wipeConfirm"></div>
   </div>
@@ -2202,7 +2242,10 @@ document.addEventListener('click',ev=>{
       try{navigator.clipboard.writeText(txt).then(ok,fb)}catch(e){fb()}return}
     case 'fileBk':{return offerFile(`Sauvegarde_CoachTennis_${today()}.json`,new Blob([JSON.stringify(S)],{type:'application/json'}),'Sauvegarde exportée')}
     case 'loadBk':{const inp=document.createElement('input');inp.type='file';inp.accept='application/json,.json,text/plain';
-      inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;try{restoreFrom(JSON.parse(await f.text()))}catch(e){toast('Ce fichier n’est pas une sauvegarde de Coach Tennis')}};inp.click();return}
+      inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;let o=null;try{o=JSON.parse(await f.text())}catch(e){}
+        if(o&&o.type==='liste'&&o.ecole&&Array.isArray(o.groupes)&&Array.isArray(o.joueurs))return importListe(o);
+        try{restoreFrom(o)}catch(e){toast('Ce fichier n’est pas une sauvegarde de Coach Tennis')}};inp.click();return}
+    case 'unDemo':{const n=retirerDemo();save();render();apresPlanning();return toast(n?'Données d’exemple effacées':'Aucune donnée d’exemple')}
     case 'restoreBk':try{restoreFrom(JSON.parse($('bkIn').value))}
       catch(e){$('bkMsg').textContent='Ce texte n’est pas une sauvegarde valide de l’application.';$('bkMsg').style.color='var(--danger)'}return;
     case 'wipe':$('wipeConfirm').innerHTML='<div class="warnbox">Tous les joueurs, séances et écoles seront effacés de cet appareil.</div><div class="row" style="margin-top:8px"><button class="btn danger solid" type="button" id="wipeYes">Tout effacer</button></div>';return;
