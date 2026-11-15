@@ -148,6 +148,16 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .star:focus-visible{outline:2px solid var(--court);border-radius:4px}
 .trend{font-size:11px;font-weight:700;white-space:nowrap;min-width:52px;text-align:right}
 .trend.up{color:var(--ok)}.trend.down{color:var(--danger)}
+.stag{font-size:12px;font-weight:700;border-radius:6px;padding:3px 8px;margin:2px 0 4px}.stag.fer{background:var(--warn-soft);color:var(--warn)}.stag.off{background:var(--surface-2);color:var(--muted)}
+.ctn{display:block;font-size:12px;color:var(--ink);font-weight:600;margin-top:2px}
+.perband{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;background:var(--surface)}.perband i{width:10px;height:10px;border-radius:50%;flex:none}.perband.off{background:var(--surface-2)}
+.bloc,.sper,.sfer{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.bloc input,.bloc select,.sper input,.sper select,.sfer input{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.bloc input[type=time]{width:112px}.bloc input[data-bk=theme]{flex:1;min-width:140px}.sper{border-bottom:1px dashed var(--line);padding-bottom:6px}.sper input[data-pk=nom]{flex:1;min-width:150px}.sper input[data-pk=note]{flex:1;min-width:140px}
+.tline{position:relative;display:flex;gap:2px;height:14px;margin:12px 0 8px;border-radius:4px;overflow:visible}.tline span{border-radius:3px;min-width:3px}.tline b{position:absolute;top:-5px;bottom:-5px;width:3px;margin-left:-1px;background:var(--ink);border-radius:2px;box-shadow:0 0 0 2px var(--surface)}
+.pcard{border:1px solid var(--line);border-radius:var(--r);padding:9px 12px;background:var(--surface);display:flex;flex-direction:column;gap:3px}.pcard.passe{opacity:.62}.pcard.cours{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+.pc-h{display:flex;gap:8px;align-items:center}.pc-h i{width:10px;height:10px;border-radius:50%;flex:none}.pc-h b{flex:1}
+.linkrow{all:unset;cursor:pointer;display:block;padding:5px 2px;border-bottom:1px dashed var(--line)}.linkrow:focus-visible{outline:2px solid var(--court)}
+.mbars{display:flex;flex-direction:column;gap:6px;margin-top:8px}.mbar{display:grid;grid-template-columns:minmax(120px,38%) 1fr 30px;gap:8px;align-items:center;font-size:13px}.mbar .tr{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}.mbar .tr i{display:block;height:100%;background:var(--danger);border-radius:5px}
 .evbox{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);padding:10px 12px;display:flex;flex-direction:column;gap:10px}
 .evr{display:flex;flex-direction:column;gap:5px;padding-bottom:9px;border-bottom:1px dashed var(--line)}.evr:last-of-type{border-bottom:0;padding-bottom:0}
 .evr-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
@@ -534,26 +544,38 @@ function retirerDemo(){const D=demoInfo();if(!D.n)return 0;
   S.groupes.forEach(g=>g.joueurIds=g.joueurIds.filter(i=>!jid.has(i)));
   S.seances=S.seances.filter(x=>!sid.has(x.id));S.matchs=(S.matchs||[]).filter(m=>!mid.has(m.id));S.conges=(S.conges||[]).filter(c=>!cid.has(c.id));
   [S.presences,S.annulations].forEach(o=>Object.keys(o||{}).forEach(k=>{if(gid.has(k.split('|')[0]))delete o[k]}));
+  if(S.coach==='Karim')S.coach='';if(S.club==='Mon club')S.club='';
   S.demo=false;return D.n}
 /* ---- Import d'une liste d'école (fichier « liste » : école, groupes et joueurs) ----
    Les joueurs déjà présents (même nom et prénom) sont rattachés à leur groupe, sans doublon :
    leur historique et leur espace joueur sont conservés. */
 function importListe(o){
   const L=o.joueurs||[],find=j=>S.joueurs.find(p=>(normNom(p.prenom)===normNom(j.prenom)&&normNom(p.nom)===normNom(j.nom))||(normNom(p.prenom+' '+p.nom)===normNom(j.nom+' '+j.prenom)));
-  const deja=L.filter(find),D=demoInfo(),ec0=S.ecoles.find(e=>normNom(e.nom)===normNom(o.ecole.nom));
+  const noms=[o.ecole.nom].concat(o.ecole.alias||[]).map(normNom),ecM=()=>S.ecoles.find(e=>noms.includes(normNom(e.nom)));
+  const deja=L.filter(find),D=demoInfo(),ec0=ecM();
   openSheet(`${head('Importer une liste')}
     <div class="recap"><b>École ${esc(o.ecole.nom)}</b>${ec0?' (déjà présente : elle sera complétée)':''}<br>${o.groupes.map(g=>`${esc(g.nom)} : ${g.joueurs.length} joueur${g.joueurs.length>1?'s':''} · ${g.creneaux.map(c=>`${JOURS[c.jour].slice(0,3).toLowerCase()}. ${c.debut}–${fromMin(toMin(c.debut)+c.duree)}`).join(', ')}`).join('<br>')}</div>
+    ${o.saison?`<div class="small"><b>Saison ${esc(o.saison.nom)}</b> : ${o.saison.periodes.length} périodes (sessions, semaines off, tournois) et ${(o.saison.feries||[]).length} jours fériés${SA()?' — remplace la saison actuelle':''}.</div>`:''}
+    ${(o.contenus||[]).length||(o.speciaux||[]).length?`<div class="small"><b>Programme détaillé</b> : contenu de ${(o.contenus||[]).length} cours${(o.speciaux||[]).length?` et ${o.speciaux.length} cours exceptionnels`:''}.</div>`:''}
     <div class="small">${L.length} joueurs : <b>${L.length-deja.length}</b> nouveaux${deja.length?`, <b>${deja.length}</b> déjà dans l’appli (${deja.map(j=>esc(j.prenom+' '+j.nom)).join(', ')}) : rattachés à leur groupe, avec leur historique et leur espace joueur`:''}.</div>
     ${D.n?`<label class="small" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="impDemo" checked style="margin-top:3px"><span><b>Effacer les données d’exemple</b> : ${D.js.length} joueurs fictifs, ${D.ec.length} écoles et ${D.gs.length} groupes d’exemple, ${D.ss.length} séances, ${D.ms.length} match${D.ms.length>1?'s':''}${D.cg.length?', le congé d’exemple':''}. Vos propres saisies ne sont pas touchées.</span></label>`:''}
     <div class="small muted">Dates de naissance et téléphones des parents sont à compléter dans la fiche de chaque joueur.</div>
     <div class="row"><button class="btn pri" type="button" id="impGo">Importer</button><button class="btn" type="button" data-close>Annuler</button></div>`);
   $('impGo').onclick=()=>{let nd=0;if($('impDemo')&&$('impDemo').checked)nd=retirerDemo();
-    let ec=S.ecoles.find(e=>normNom(e.nom)===normNom(o.ecole.nom));if(!ec){ec={id:uid(),nom:o.ecole.nom,lieu:o.ecole.lieu||''};S.ecoles.push(ec)}
-    let nn=0,nr=0;
-    const court=S.courts[0]||'Court 1';o.groupes.forEach(G=>{let g=S.groupes.find(x=>x.ecoleId===ec.id&&normNom(x.nom)===normNom(G.nom));
-      if(!g){g={id:uid(),ecoleId:ec.id,nom:G.nom,niveau:G.niveau||'',joueurIds:[],creneaux:G.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court||court})),debutPeriode:today(),finPeriode:''};S.groupes.push(g)}
+    let ec=ecM();if(!ec){ec={id:uid(),nom:o.ecole.nom,lieu:o.ecole.lieu||''};S.ecoles.push(ec)}else{ec.nom=o.ecole.nom;if(o.ecole.lieu)ec.lieu=o.ecole.lieu}
+    let nn=0,nr=0;const court0=S.courts[0]||'Court 1';
+    const court=court0;o.groupes.forEach(G=>{let g=S.groupes.find(x=>x.ecoleId===ec.id&&normNom(x.nom)===normNom(G.nom));
+      const cr=G.creneaux.map(c=>{const o2=g&&g.creneaux.find(x=>+x.jour===+c.jour);return Object.assign({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court||(o2&&o2.court)||court},c.ensemble?{ensemble:c.ensemble}:{})});
+      if(!g){g={id:uid(),ecoleId:ec.id,nom:G.nom,niveau:G.niveau||'',joueurIds:[],creneaux:cr,debutPeriode:G.debutPeriode||today(),finPeriode:G.finPeriode||''};S.groupes.push(g)}
+      else Object.assign(g,{creneaux:cr,niveau:G.niveau||g.niveau},G.debutPeriode?{debutPeriode:G.debutPeriode}:{},G.finPeriode?{finPeriode:G.finPeriode}:{});
       G.joueurs.forEach(j=>{let p=find(j);if(p)nr++;else{p={id:uid(),prenom:j.prenom,nom:j.nom,naissance:'',niveau:NIVEAUX.includes(j.niveau)?j.niveau:NIVEAUX.includes(G.niveauJoueurs)?G.niveauJoueurs:NIVEAUX[0],tel:'',notes:'',niveaux:{},evol:[],classements:[],externes:{}};S.joueurs.push(p);nn++}
         if(!g.joueurIds.includes(p.id))g.joueurIds.push(p.id)})});
+    if(o.club&&!S.club)S.club=o.club;
+    if(o.saison){const sa=JSON.parse(JSON.stringify(o.saison));sa.periodes.forEach(p=>{p.id=p.id||uid()});sa.feries=sa.feries||[];S.saison=sa}
+    const gid=n=>(S.groupes.find(x=>x.ecoleId===ec.id&&normNom(x.nom)===normNom(n))||{}).id;S.contenus=S.contenus||{};
+    (o.contenus||[]).forEach(c=>{const id=gid(c.groupe);if(id)S.contenus[`${id}|${c.date}|${c.debut}`]=c.blocs});
+    (o.speciaux||[]).forEach(x=>{const ids=(x.groupes||[]).map(gid).filter(Boolean);if(!ids.length)return;S.speciaux=(S.speciaux||[]).filter(y=>y.id!==x.id);
+      S.speciaux.push({id:x.id,titre:x.titre||'Cours exceptionnel',date:x.date,debut:x.debut,duree:+x.duree,court:x.court||court0,groupeIds:ids});if(x.contenu)S.contenus['sp|'+x.id]=x.contenu});
     S.demo=false;save();closeSheet();render();apresPlanning();
     toast(`${nn} joueur${nn>1?'s':''} ajouté${nn>1?'s':''}${nr?`, ${nr} rattaché${nr>1?'s':''}`:''}${nd?' · exemple effacé':''}`)}}
 function seed(){
@@ -616,7 +638,7 @@ function planRappels(){if(!window.Native)return;clearTimeout(rappelTimer);rappel
   if(APPMODE==='joueur'){await Native.schedule(itemsRappelsJ());return}
   const r=S.rappels||{};if(!r.on){Native.schedule([]);return}
   const now=Date.now(),items=[],t=today();
-  for(let i=0;i<30&&items.length<60;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.off)return;
+  for(let i=0;i<30&&items.length<60;i++){const d=addDays(t,i);evsAff(d).forEach(e=>{if(e.off)return;
     const [y,mo,da]=d.split('-').map(Number),[h,mi]=e.debut.split(':').map(Number),at=new Date(y,mo-1,da,h,mi-(+r.avant||30));
     if(at.getTime()<=now+30000)return;
     items.push({key:e.type==='ind'?e.id:e.key,at,title:`${e.debut} · ${evTitle(e)}`,
@@ -637,6 +659,34 @@ function restoreFrom(o){if(!o||!Array.isArray(o.joueurs))throw 0;S=migrate(Objec
 const UI={tab:'jour',week:monday(today()),q:''};
 try{const t=sessionStorage.getItem('uscm-tab');if(t)UI.tab=t}catch(e){}
 
+/* ============ Saison : périodes, jours fériés, cours exceptionnels, motifs d’annulation ============ */
+const MOTIFS=['Intempéries (pluie, vent)','Coach indisponible','Terrain indisponible','Tournoi / compétition','Programme modifié','Autre'];
+const PTYPES={session:['Entraînement','var(--c1)'],test:['Tests','var(--c3)'],tournoi:['Tournoi','var(--c2)'],selection:['Sélection','var(--c5)'],special:['Programme spécial','var(--c4)'],off:['Sans entraînement','var(--c9)']};
+const ACTIVITES=['Tennis','Physique','Match','Mental','Récupération','Autre'];
+const SA=()=>S.saison||null;
+/* Période la plus précise couvrant la date (une semaine spéciale l’emporte sur la session qui la contient) */
+function periodeOn(d){const L=((SA()||{}).periodes||[]).filter(p=>p.debut<=d&&d<=p.fin);
+  return L.sort((a,b)=>(parse(a.fin)-parse(a.debut))-(parse(b.fin)-parse(b.debut)))[0]||null}
+const ferieOn=d=>((SA()||{}).feries||[]).find(f=>f.date===d)||null;
+const motifTxt=a=>!a?'':a===1||a===true?'Annulé':a.motif+(a.note?` · ${a.note}`:'');
+const motifCat=e=>e.auto?'Jour férié':e.conge?'Congé du coach':(S.annulations[e.key]&&S.annulations[e.key].motif)||'Sans motif';
+const nbSem=p=>Math.max(1,Math.round((parse(p.fin)-parse(p.debut))/864e5/7));
+function semDans(p,d){return Math.floor((parse(d)-parse(p.debut))/864e5/7)+1}
+/* Contenu d’un cours collectif : blocs horaires (Tennis, Physique…) avec thème */
+const contenuOf=key=>(S.contenus||{})[key]||null;
+const contenuTxt=key=>{const c=contenuOf(key);return c?c.map(b=>`${b.act}${b.theme?' : '+b.theme:''}`).join(' · '):''};
+function saisonTag(d){const f=ferieOn(d),p=periodeOn(d);
+  if(f)return `<div class="stag fer">Férié · ${esc(f.nom)}${f.estime?' *':''}</div>`;
+  if(p&&p.cours===false)return `<div class="stag off">${esc(p.nom)} · pas de cours collectif</div>`;return ''}
+/* Cours collectifs fusionnés pour l’affichage : groupes entraînés ensemble (même repère « ensemble ») */
+function fusionCol(L){const out=[],vus={};
+  L.forEach(e=>{if(e.type!=='col'||!e.ens){out.push(e);return}
+    const k=`${e.debut}|${e.fin}|${e.ens}|${e.off?1:0}`;
+    if(vus[k]){const m=vus[k];m.refs.push(e.ref);m.keys.push(e.key);m.joint=true;return}
+    const m=Object.assign({},e,{refs:[e.ref],keys:[e.key]});vus[k]=m;out.push(m)});
+  return out}
+const evsAff=d=>fusionCol(eventsOn(d));
+const estPasse=e=>e.date<today()||(e.date===today()&&e.fin<=new Date().toTimeString().slice(0,5));
 /* ============ Événements du planning ============ */
 function eventsOn(date){
   const ev=[],cg=congeOn(date);
@@ -645,22 +695,28 @@ function eventsOn(date){
     if(s.duo&&duos[s.duo]){const e=duos[s.duo];e.refs.push(s);e.off=e.refs.every(r=>r.statut==='annulee');return}
     const e={type:'ind',id:s.id,date,debut:s.debut,fin:fromMin(toMin(s.debut)+(+s.duree)),duree:+s.duree,court:s.court,ref:s,refs:[s],off:s.statut==='annulee'};
     if(s.duo)duos[s.duo]=e;ev.push(e)});
-  const j=dow(date);
+  const j=dow(date),per=periodeOn(date),fer=ferieOn(date),F=S.forces||{};
   S.groupes.forEach(g=>{
     if(g.debutPeriode&&date<g.debutPeriode)return; if(g.finPeriode&&date>g.finPeriode)return;
     g.creneaux.forEach(c=>{ if(+c.jour!==j)return;
       const key=`${g.id}|${date}|${c.debut}`;
-      const ann=!!S.annulations[key];
-      ev.push({type:'col',key,date,debut:c.debut,fin:fromMin(toMin(c.debut)+(+c.duree)),duree:+c.duree,court:c.court,ref:g,off:ann||!!cg,conge:!!cg&&!ann});
+      if(per&&per.cours===false&&!F[key])return;/* période sans cours collectif (semaine off, tournoi…) : rien n’est programmé */
+      const a=S.annulations[key],ann=!!a,auto=!ann&&!!fer&&!F[key];
+      ev.push({type:'col',key,date,debut:c.debut,fin:fromMin(toMin(c.debut)+(+c.duree)),duree:+c.duree,court:c.court,ref:g,ens:c.ensemble||'',
+        off:ann||auto||!!cg,conge:!!cg&&!ann&&!auto,auto,motif:ann?motifTxt(a):auto?`Jour férié · ${fer.nom}`:cg?'Congé du coach':''});
     });
   });
+  (S.speciaux||[]).filter(x=>x.date===date).forEach(x=>{const key='sp|'+x.id,a=S.annulations[key],gs=x.groupeIds.map(id=>S.groupes.find(g=>g.id===id)).filter(Boolean);
+    const ref={id:'sp-'+x.id,special:x,nom:x.titre||'Cours exceptionnel',ecoleId:(gs[0]||{}).ecoleId,niveau:gs.map(g=>g.nom).join(' + '),joueurIds:[...new Set([].concat(...gs.map(g=>g.joueurIds)))],creneaux:[]};
+    ev.push({type:'col',key,date,debut:x.debut,fin:fromMin(toMin(x.debut)+(+x.duree)),duree:+x.duree,court:x.court,ref,ens:'',special:true,
+      off:!!a||!!cg,conge:!!cg&&!a,auto:false,motif:a?motifTxt(a):cg?'Congé du coach':''})});
   ev.sort((a,b)=>a.debut.localeCompare(b.debut));
-  const act=ev.filter(e=>!e.off);
-  ev.forEach(a=>{a.conflits=a.off?[]:act.filter(b=>b!==a&&toMin(a.debut)<toMin(b.fin)&&toMin(b.debut)<toMin(a.fin));
+  const act=ev.filter(e=>!e.off),ens=(a,b)=>a.type==='col'&&b.type==='col'&&a.ens&&a.ens===b.ens&&a.debut===b.debut&&a.fin===b.fin;
+  ev.forEach(a=>{a.conflits=a.off?[]:act.filter(b=>b!==a&&!ens(a,b)&&toMin(a.debut)<toMin(b.fin)&&toMin(b.debut)<toMin(a.fin));
     a.enConge=!a.off&&!!cg;a.horsDispo=!a.off&&!inDispo(date,toMin(a.debut),toMin(a.fin))});
   return ev;
 }
-const evTitle=e=>e.type==='ind'?(e.refs||[e.ref]).map(r=>{const p=S.joueurs.find(x=>x.id===r.joueurId);return (e.refs||[]).length>1&&p?p.prenom:pName(p)}).join(' + '):e.ref.nom;
+const evTitle=e=>e.type==='ind'?(e.refs||[e.ref]).map(r=>{const p=S.joueurs.find(x=>x.id===r.joueurId);return (e.refs||[]).length>1&&p?p.prenom:pName(p)}).join(' + '):(e.refs||[e.ref]).map(g=>g.nom).join(' + ');
 const duoSiblings=s=>s&&s.duo?S.seances.filter(x=>x.duo===s.duo&&x.id!==s.id):[];
 const avecTxt=s=>{const L=duoSiblings(s).map(x=>{const p=S.joueurs.find(y=>y.id===x.joueurId);return p?pName(p):''}).filter(Boolean);return L.length?`à deux avec ${L.join(', ')}`:''};
 function weekStats(m){
@@ -668,7 +724,7 @@ function weekStats(m){
   for(let i=0;i<7;i++){const d=addDays(m,i);
     dispo+=dispoOn(d).reduce((a,r)=>a+toMin(r.fin)-toMin(r.debut),0);
     libre+=freeSlots(d).reduce((a,[x,y])=>a+y-x,0);
-    eventsOn(d).forEach(e=>{if(e.off)return;
+    evsAff(d).forEach(e=>{if(e.off)return;
     if(e.type==='ind'){ind+=e.duree;nb++}else col+=e.duree;
     if(e.conflits.length){conf++;conflits.push(e)}
     if(e.horsDispo)hors.push(e)})}
@@ -719,8 +775,8 @@ function evCard(e,compact){
     ? (e.refs.length>1
       ? `<span class="chip ind">À deux</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.refs.map(r=>{const p=S.joueurs.find(x=>x.id===r.joueurId);const st=r.statut!=='planifiee'?`<span class="chip st-${r.statut}">${STATUTS[r.statut]}</span>`:e.date>=today()?repChipC(repCoach(r.joueurId,r.id,e.date,e.debut)):'';return st?` <span class="duoc">${esc(p?p.prenom:'?')} ${st}</span>`:''}).join('')}`
       : `<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(thTxt(e.ref))}${e.ref.statut!=='planifiee'?` <span class="chip st-${e.ref.statut}">${STATUTS[e.ref.statut]}</span>`:e.date>=today()?' '+repChipC(repCoach(e.ref.joueurId,e.id,e.date,e.debut)):''}`)
-    : `<span class="chip col">Collectif</span>${esc(e.court)} · ${e.ref.joueurIds.length} joueurs${e.off?` <span class="chip st-annulee">${e.conge?'Congé':'Annulé'}</span>`:e.date>=today()?repResumeCol(e):''}`;
-  const data=e.type==='ind'?`data-sid="${e.id}"`:`data-gkey="${esc(e.key)}"`;
+    : `<span class="chip col">${e.special?'Exceptionnel':e.joint?'Ensemble':'Collectif'}</span>${esc(e.court)} · ${(e.refs||[e.ref]).reduce((a,g)=>a+g.joueurIds.length,0)} joueurs${e.off?` <span class="chip st-annulee">${esc(e.motif||'Annulé')}</span>`:e.date>=today()?repResumeCol(e):''}${!e.off&&contenuTxt(e.key)?`<span class="ctn">${esc(contenuTxt(e.key))}</span>`:''}`;
+  const data=e.type==='ind'?`data-sid="${e.id}"`:`data-gkey="${esc((e.keys||[e.key]).join(','))}"`;
   const flag=e.enConge?' <span class="chip conf">Pendant congé</span>':e.horsDispo?' <span class="chip hd">Hors dispo</span>':'';
   return `<button type="button" class="ev ${e.type} ${e.off?'off':''} ${e.conflits.length||e.enConge?'bad':''} ${e.horsDispo&&!e.enConge?'hd':''}" ${data}>
     <span class="t-time num">${e.debut}<i>${e.fin}</i></span>
@@ -729,8 +785,8 @@ function evCard(e,compact){
 }
 
 function vJour(){
-  const t=today(), ev=eventsOn(t), st=weekStats(monday(t));
-  const nxt=[1,2,3].map(i=>addDays(t,i)).map(d=>({d,ev:eventsOn(d).filter(e=>!e.off)}));
+  const t=today(), ev=evsAff(t), st=weekStats(monday(t));
+  const nxt=[1,2,3].map(i=>addDays(t,i)).map(d=>({d,ev:evsAff(d).filter(e=>!e.off)}));
   const lim=addDays(t,-14);
   const sans=S.joueurs.filter(p=>!S.seances.some(s=>s.joueurId===p.id&&s.date>=lim&&s.statut!=='annulee'));
   return `${bandeauPublier()}${S.demo?'<div class="demo">Données d’exemple — remplacez-les depuis Réglages quand vous êtes prêt.</div>':''}
@@ -742,11 +798,11 @@ function vJour(){
     <div class="kpi ${st.conf?'alert':''}"><b>${st.conf}</b><span>conflit${st.conf>1?'s':''} d’horaire</span></div>
   </div>
   <div class="two">
-    <section class="list"><div class="row between"><h3>Aujourd’hui</h3><span class="dsp ${congeOn(t)?'cg':''}">${dayStatus(t)}</span></div>
+    <section class="list"><div class="row between"><h3>Aujourd’hui</h3><span class="dsp ${congeOn(t)?'cg':''}">${dayStatus(t)}</span></div>${saisonTag(t)}
       ${ev.length?ev.map(e=>evCard(e)).join(''):`<div class="empty">${congeOn(t)?'Vous êtes en congé aujourd’hui.':dispoOn(t).length?'Aucun entraînement aujourd’hui.':'Jour de repos.'}</div>`}
       ${freeBtns(t)}
       <h3 style="margin-top:10px">Prochains jours</h3>
-      ${nxt.map(x=>`<div class="panel"><div class="row between"><b>${fmtDate(x.d)}</b><span class="dsp ${congeOn(x.d)?'cg':''}">${dayStatus(x.d)}</span></div>
+      ${nxt.map(x=>`<div class="panel"><div class="row between"><b>${fmtDate(x.d)}</b><span class="dsp ${congeOn(x.d)?'cg':''}">${dayStatus(x.d)}</span></div>${saisonTag(x.d)}
         <div class="list" style="margin-top:8px;gap:6px">${x.ev.map(e=>evCard(e)).join('')}${freeBtns(x.d)}${!x.ev.length&&!freeSlots(x.d).length?'<div class="muted small">Rien de programmé.</div>':''}</div></div>`).join('')}
     </section>
     <aside class="list">
@@ -774,9 +830,9 @@ function vPlanning(){
   </div>
   <div class="row between"><div class="legend"><span><i style="background:var(--court)"></i>Séance individuelle</span><span><i style="background:var(--clay)"></i>Cours collectif (école)</span><span><i style="background:var(--danger)"></i>Conflit</span><span><i style="background:var(--warn)"></i>Hors disponibilité</span><span><i style="border:1px dashed var(--court)"></i>Créneau libre</span></div>
     <span class="muted small num">Programmé ${fmtH(st.ind+st.col)} sur ${fmtH(st.dispo)} disponibles · encore libre ${fmtH(st.libre)}</span></div>
-  <div class="week">${days.map(d=>{const ev=eventsOn(d);const min=ev.filter(e=>!e.off).reduce((a,e)=>a+e.duree,0);const cg=congeOn(d),fb=freeBtns(d);
+  ${periodeBandeau(m)}<div class="week">${days.map(d=>{const ev=evsAff(d);const min=ev.filter(e=>!e.off).reduce((a,e)=>a+e.duree,0);const cg=congeOn(d),fb=freeBtns(d);
     return `<section class="day ${d===t?'today':''} ${dispoOn(d).length?'':'rest'}"><div class="day-h"><b>${JC[dow(d)]} ${parse(d).getDate()}</b><span class="num">${min?fmtH(min):''}</span></div>
-      <div class="dsp ${cg?'cg':''}">${dayStatus(d)}</div>
+      <div class="dsp ${cg?'cg':''}">${dayStatus(d)}</div>${saisonTag(d)}
       ${ev.map(e=>evCard(e)).join('')}${fb}
       ${!ev.length&&!fb?`<div class="free">${cg?'Rien n’est programmé pendant le congé.':dispoOn(d).length?'—':'Jour de repos'}</div>`:''}</section>`}).join('')}</div>`;
 }
@@ -795,7 +851,69 @@ function vJoueurs(){
 }
 
 function slotTxt(c){return `${JC[c.jour]} ${c.debut}–${fromMin(toMin(c.debut)+(+c.duree))} · ${esc(c.court)}`}
-function vEcoles(){
+function periodeBandeau(m){const p=periodeOn(m)||periodeOn(addDays(m,4));if(!p)return '';
+  const off=p.cours===false;return `<div class="perband ${off?'off':''}"><i style="background:${(PTYPES[p.type]||PTYPES.session)[1]}"></i><b>${esc(p.nom)}</b><span class="small muted">${fmtShort(p.debut)} – ${fmtShort(p.fin)}${!off&&p.type==='session'?` · semaine ${semDans(p,m<p.debut?p.debut:m)} sur ${nbSem(p)}`:''}${off?' · pas de cours collectif':''}${p.note?' · '+esc(p.note):''}</span></div>`}
+function vEcoles(){const t=UI.ecTab||'groupes';
+  return `<div class="seg" role="tablist" style="margin-bottom:2px">${[['groupes','Groupes'],['saison','Saison'],['bilan','Bilan']].map(([k,l])=>`<button type="button" data-ectab="${k}" aria-pressed="${t===k}">${l}</button>`).join('')}</div>
+  ${t==='saison'?vSaison():t==='bilan'?vBilan():vGroupes()}`}
+function vSaison(){const sa=SA(),t=today();
+  if(!sa)return `<div class="empty">Aucune saison définie. Créez-la pour programmer les périodes (sessions, semaines off, tournois) et les jours fériés : les cours collectifs s’y adaptent d’eux-mêmes.<div class="row" style="justify-content:center;margin-top:10px"><button class="btn pri" type="button" data-editsaison="">Créer la saison</button></div></div>`;
+  const P=sa.periodes,tot=Math.max(1,parse(sa.fin)-parse(sa.debut)),cur=periodeOn(t),pos=Math.min(100,Math.max(0,(parse(t)-parse(sa.debut))/tot*100));
+  const nxt=P.find(p=>p.debut>t);
+  const used=[...new Set(P.map(p=>p.type))];
+  return `<div class="row between"><div><h2 style="margin:0">${esc(sa.nom)}</h2><span class="small muted">${fmtShort(sa.debut)} ${sa.debut.slice(0,4)} – ${fmtShort(sa.fin)} ${sa.fin.slice(0,4)} · ${P.length} périodes</span></div>
+    <div class="row"><button class="btn" type="button" data-newsp="">+ Cours exceptionnel</button><button class="btn pri" type="button" data-editsaison="">Modifier</button></div></div>
+  <div class="panel"><div class="small muted">Aujourd’hui</div><div style="font-size:18px;font-weight:700">${cur?esc(cur.nom)+(cur.cours!==false&&cur.type==='session'?` · semaine ${semDans(cur,t)} sur ${nbSem(cur)}`:''):t<sa.debut?'Avant le début de la saison':t>sa.fin?'Saison terminée':'Hors période'}</div>
+    ${nxt?`<div class="small">Ensuite : <b>${esc(nxt.nom)}</b> à partir du ${fmtDate(nxt.debut)}</div>`:''}
+    <div class="tline" role="img" aria-label="Chronologie de la saison">${P.map(p=>`<span style="flex:${Math.max(1,(parse(p.fin)-parse(p.debut))/864e5+1)};background:${(PTYPES[p.type]||PTYPES.session)[1]}" title="${esc(p.nom)} · ${fmtShort(p.debut)} – ${fmtShort(p.fin)}"></span>`).join('')}<b style="left:${pos}%" aria-hidden="true"></b></div>
+    <div class="legend small">${used.map(k=>`<span><i style="background:${PTYPES[k][1]}"></i>${PTYPES[k][0]}</span>`).join('')}</div></div>
+  <div class="list">${P.map((p,i)=>{const F=(sa.feries||[]).filter(f=>f.date>=p.debut&&f.date<=p.fin),etat=p.fin<t?'passe':p.debut<=t?'cours':'';
+    const n=p.cours===false?0:compteCours(p.debut,p.fin);
+    return `<div class="pcard ${etat}"><div class="pc-h"><i style="background:${(PTYPES[p.type]||PTYPES.session)[1]}"></i><b>${esc(p.nom)}</b><span class="small muted num">${i+1}/${P.length}</span></div>
+      <div class="small num">${fmtShort(p.debut)} – ${fmtShort(p.fin)} · ${nbSem(p)} sem.${etat==='cours'?' · <b>en cours</b>':''}</div>
+      <div class="small">${p.cours===false?'<span class="muted">Pas de cours collectif</span>':`${n.prevus} cours prévus${n.feries?` · ${n.feries} sur jour férié`:''}`}${p.note?` · <span class="muted">${esc(p.note)}</span>`:''}</div>
+      ${F.length?`<div class="small" style="color:var(--warn)">Fériés : ${F.map(f=>`${JC[dow(f.date)].toLowerCase()}. ${fmtShort(f.date)} · ${esc(f.nom)}${f.estime?'*':''}`).join(' ; ')}</div>`:''}</div>`}).join('')}</div>
+  ${(sa.feries||[]).some(f=>f.estime)?'<div class="small muted">* Date estimée (fête religieuse, selon l’observation du croissant lunaire).</div>':''}
+  ${(S.speciaux||[]).length?`<div class="panel"><h3>Cours exceptionnels</h3><div class="list" style="gap:4px;margin-top:6px">${S.speciaux.slice().sort((a,b)=>(a.date+a.debut).localeCompare(b.date+b.debut)).map(x=>`<button type="button" class="linkrow" data-editsp="${x.id}"><b class="num">${fmtShort(x.date)} ${x.debut}</b> ${esc(x.titre)} <span class="small muted">· ${x.groupeIds.map(id=>(S.groupes.find(g=>g.id===id)||{}).nom).filter(Boolean).join(' + ')}</span></button>`).join('')}</div></div>`:''}`}
+/* Comptage des cours collectifs d’une plage (affichage fusionné : un cours commun compte une fois) */
+function compteCours(a,b){let prevus=0,feries=0;for(let d=a;d<=b;d=addDays(d,1))evsAff(d).forEach(e=>{if(e.type!=='col')return;prevus++;if(e.auto)feries++});return {prevus,feries}}
+/* ---- Bilan : séances effectuées et annulées, avec leurs motifs ---- */
+function plagesBilan(){const t=today(),sa=SA(),L=[];
+  if(sa)L.push(['saison',`Saison complète (${esc(sa.nom)})`,sa.debut,sa.fin]);
+  const m0=t.slice(0,8)+'01',pm=addDays(m0,-1).slice(0,8)+'01';
+  L.push(['mois',`Ce mois (${MOIS[parse(t).getMonth()]})`,m0,addDays(addDays(m0,32).slice(0,8)+'01',-1)]);
+  L.push(['moisp',`Mois précédent (${MOIS[parse(pm).getMonth()]})`,pm,addDays(m0,-1)]);
+  L.push(['4s','4 dernières semaines',addDays(t,-27),t]);
+  if(sa)sa.periodes.filter(p=>p.cours!==false&&p.debut<=t).forEach(p=>L.push(['p-'+p.id,p.nom,p.debut,p.fin]));
+  return L}
+function calcBilan(a,b){const t=today(),G={},T={eff:0,ann:0,av:0,min:0,mot:{}},I={faite:0,annulee:0,absent:0,av:0,mot:{}},P={};
+  const gS=g=>G[g.id]=G[g.id]||{g,prev:0,eff:0,ann:0,av:0,min:0,mot:{}};
+  for(let d=a;d<=b;d=addDays(d,1)){const L=eventsOn(d);
+    L.forEach(e=>{if(e.type!=='col')return;const gs=e.special?e.ref.special.groupeIds.map(id=>S.groupes.find(g=>g.id===id)).filter(Boolean):[e.ref];
+      gs.forEach(g=>{const r=gS(g);r.prev++;if(e.off&&!estPasse(e)){r.annF=(r.annF||0)+1}else if(e.off){r.ann++;const m=motifCat(e);r.mot[m]=(r.mot[m]||0)+1}else if(estPasse(e)){r.eff++;r.min+=e.duree;
+        const pr=S.presences[e.key];g.joueurIds.forEach(id=>{const x=P[id]=P[id]||{eff:0,pt:0,pres:0};x.eff++;if(pr){x.pt++;if(pr.includes(id))x.pres++}})}else r.av++})});
+    fusionCol(L).forEach(e=>{if(e.type!=='col')return;if(e.off&&!estPasse(e)){T.annF=(T.annF||0)+1}else if(e.off){T.ann++;const m=motifCat(e);T.mot[m]=(T.mot[m]||0)+1}else if(estPasse(e)){T.eff++;T.min+=e.duree}else T.av++});
+    L.forEach(e=>{if(e.type!=='ind')return;e.refs.forEach(s=>{if(s.statut==='faite')I.faite++;else if(s.statut==='absent')I.absent++;else if(s.statut==='annulee'){I.annulee++;const m=s.motif||'Sans motif';I.mot[m]=(I.mot[m]||0)+1}else if(estPasse(e))I.nr=(I.nr||0)+1;else I.av++})})}
+  return {G:Object.values(G),T,I,P}}
+function vBilan(){const L=plagesBilan(),sel=L.find(x=>x[0]===UI.bil)||L[0],t=today(),[k,lab,a,b0]=sel,b=b0>t?t:b0;
+  const B=calcBilan(a,b0),T=B.T,tx=T.eff+T.ann?Math.round(T.eff/(T.eff+T.ann)*100):null;
+  const mot=Object.entries(T.mot).sort((x,y)=>y[1]-x[1]),mx=Math.max(1,...mot.map(x=>x[1]));
+  const ecs=S.ecoles.map(ec=>({ec,G:B.G.filter(r=>r.g.ecoleId===ec.id)})).filter(x=>x.G.length);
+  return `<div class="row between"><h2 style="margin:0">Bilan des séances</h2><label class="fl" style="min-width:220px">Période<select id="bilSel">${opts(L.map(x=>[x[0],x[1]]),k)}</select></label></div>
+  <div class="small muted">${fmtDate(a)} → ${fmtDate(b0)}${b0>t?' · effectué jusqu’à aujourd’hui, le reste est à venir':''}. Un cours commun à plusieurs groupes compte une fois pour le coach, et une fois pour chaque groupe.</div>
+  <div class="kpis num"><div class="kpi"><b>${T.eff}</b><span>cours collectifs effectués</span></div><div class="kpi ${T.ann?'alert':''}"><b>${T.ann}</b><span>non effectués</span></div>
+    <div class="kpi"><b>${tx===null?'—':tx+' %'}</b><span>taux de réalisation</span></div><div class="kpi"><b>${fmtH(T.min)}</b><span>d’entraînement collectif</span></div></div>
+  ${T.av||T.annF?`<div class="small muted">${T.av?`${T.av} cours encore à venir sur cette période`:''}${T.annF?`${T.av?' · ':''}${T.annF} déjà annulés à l’avance (jours fériés à venir…)`:''}.</div>`:''}
+  <div class="panel"><h3>Motifs des cours non effectués</h3>${mot.length?`<div class="mbars">${mot.map(([m,n])=>`<div class="mbar"><span>${esc(m)}</span><span class="tr"><i style="width:${n/mx*100}%"></i></span><b class="num">${n}</b></div>`).join('')}</div>`:'<div class="small muted" style="margin-top:6px">Aucun cours annulé sur cette période.</div>'}</div>
+  ${ecs.map(({ec,G})=>`<div class="panel"><h3>${esc(ec.nom)}</h3><div class="evtab"><table><thead><tr><th>Groupe</th><th>Prévus</th><th>Effectués</th><th>Non eff.</th><th>À venir</th><th>Heures</th><th>Motifs</th></tr></thead><tbody>
+    ${G.map(r=>`<tr><td><b>${esc(r.g.nom)}</b></td><td class="num">${r.prev}</td><td class="num"><b>${r.eff}</b></td><td class="num">${r.ann}</td><td class="num">${r.av}${r.annF?` <span class="small muted">(+${r.annF} ann.)</span>`:''}</td><td class="num">${fmtH(r.min)}</td><td class="small" style="white-space:normal">${Object.entries(r.mot).map(([m,n])=>`${esc(m)} ${n}`).join(' · ')||'—'}</td></tr>`).join('')}</tbody></table></div>
+    ${G.map(r=>{const js=r.g.joueurIds.map(id=>({p:S.joueurs.find(x=>x.id===id),x:B.P[id]||{eff:0,pt:0,pres:0}})).filter(o=>o.p);
+      return `<details style="margin-top:6px"><summary class="small"><b>${esc(r.g.nom)}</b> · assiduité des joueurs</summary><div class="evtab"><table><thead><tr><th>Joueur</th><th>Cours pointés</th><th>Présent</th><th>Assiduité</th></tr></thead><tbody>
+        ${js.sort((x,y)=>x.p.nom.localeCompare(y.p.nom)).map(({p,x})=>`<tr><td>${esc(pName(p))}</td><td class="num">${x.pt}/${x.eff}</td><td class="num">${x.pres}</td><td class="num">${x.pt?Math.round(x.pres/x.pt*100)+' %':'—'}</td></tr>`).join('')}</tbody></table></div>
+        <div class="small muted">Assiduité calculée sur les cours où les présences ont été enregistrées.</div></details>`}).join('')}</div>`).join('')||'<div class="empty">Aucun cours collectif sur cette période.</div>'}
+  <div class="panel"><h3>Séances individuelles</h3><div class="small" style="margin-top:6px"><b>${B.I.faite}</b> faites · <b>${B.I.annulee}</b> annulées${Object.keys(B.I.mot).length?` (${Object.entries(B.I.mot).map(([m,n])=>`${esc(m)} ${n}`).join(', ')})`:''} · <b>${B.I.absent}</b> absences du joueur${B.I.nr?` · <span style="color:var(--warn)">${B.I.nr} passées sans statut (à renseigner)</span>`:''}${B.I.av?` · ${B.I.av} à venir`:''}</div></div>
+  <div class="row"><button class="btn" type="button" id="bilPdf">Exporter le bilan (PDF)</button></div>`}
+function vGroupes(){
   return `<div class="row between"><h2>Écoles &amp; cours collectifs</h2><div class="row"><button class="btn" type="button" data-newschool="">+ École</button><button class="btn clay" type="button" data-newgroup="">+ Groupe</button></div></div>
   <p class="muted" style="margin:0;max-width:65ch">Chaque groupe a des créneaux hebdomadaires qui s’ajoutent automatiquement au planning du coach. Un cours peut être annulé ponctuellement depuis le planning.</p>
   ${S.ecoles.length?S.ecoles.map(e=>{const gs=S.groupes.filter(g=>g.ecoleId===e.id);
@@ -1112,7 +1230,8 @@ function openSeance(id){
   ${e.conflits.length?`<div class="warnbox">Chevauche : ${e.conflits.map(c=>`${c.debut}–${c.fin} ${esc(evTitle(c))}`).join(', ')}</div>`:''}
   ${grp.map((x,i)=>{const r=repCoach(x.joueurId,x.id,x.date,x.debut),pp=ps[i];
     return `<div class="list" style="gap:6px">${duo?`<b>${esc(pName(pp))}</b>`:''}${r?`<div class="row" style="gap:6px"><span class="small">Réponse du joueur :</span> ${repChipC(r)}${r.m?` <span class="small muted">« ${esc(r.m)} »</span>`:''}</div>`:''}
-      <div><h3 style="margin-bottom:6px">Statut${duo?` · ${esc(pp?pp.prenom:'')}`:''}</h3><div class="seg" data-stseg="${x.id}">${Object.entries(STATUTS).map(([k,l])=>`<button type="button" data-st="${k}" aria-pressed="${x.statut===k}">${l}</button>`).join('')}</div></div></div>`}).join('')}
+      <div><h3 style="margin-bottom:6px">Statut${duo?` · ${esc(pp?pp.prenom:'')}`:''}</h3><div class="seg" data-stseg="${x.id}">${Object.entries(STATUTS).map(([k,l])=>`<button type="button" data-st="${k}" aria-pressed="${x.statut===k}">${l}</button>`).join('')}</div>
+        <label class="fl" data-motbox="${x.id}" style="margin-top:6px" ${x.statut==='annulee'?'':'hidden'}>Motif de l’annulation<select data-motsel="${x.id}">${opts(MOTIFS,x.motif||MOTIFS[0])}</select></label></div></div>`}).join('')}
   ${grp.map((x,i)=>evalForm(x,ps[i],duo)).join('')}
   ${p&&!duo?`<hr class="sep"><h2 style="font-size:22px">Fiche du joueur</h2>${ficheHtml(p,thList(s).map(x=>x.t))}
   <div><h3 style="margin-bottom:8px">Dernières séances</h3>${recents.length?`<div class="list" style="gap:6px">${recents.map(r=>`<div class="recap"><b class="num">${fmtShort(r.date)}</b> · ${esc(thTxt(r))}${r.notes?`<br><span class="small muted">${esc(r.notes)}</span>`:''}</div>`).join('')}</div>`:'<div class="muted small">Première séance faite avec ce joueur.</div>'}</div><hr class="sep">`:''}
@@ -1127,9 +1246,9 @@ function openSeance(id){
     const o=$('evo-'+sid+'-'+k);if(o)o.textContent=E[t]&&E[t].n?`${E[t].n}/10`:'—'});
   sheetEl.querySelectorAll('[data-evc]').forEach(inp=>inp.oninput=()=>{const[sid,k]=inp.dataset.evc.split('|'),t=thList(grp.find(y=>y.id===sid))[+k].t,E=evs[sid],v=inp.value.trim();
     if(v){E[t]=E[t]||{n:0};E[t].c=v}else if(E[t]){delete E[t].c;if(!E[t].n)delete E[t]}});
-  sheetEl.querySelectorAll('[data-stseg]').forEach(seg=>seg.onclick=ev=>{const b=ev.target.closest('[data-st]');if(!b)return;st[seg.dataset.stseg]=b.dataset.st;seg.querySelectorAll('button').forEach(y=>y.setAttribute('aria-pressed',y===b))});
+  sheetEl.querySelectorAll('[data-stseg]').forEach(seg=>seg.onclick=ev=>{const b=ev.target.closest('[data-st]');if(!b)return;st[seg.dataset.stseg]=b.dataset.st;seg.querySelectorAll('button').forEach(y=>y.setAttribute('aria-pressed',y===b));const mb=sheetEl.querySelector(`[data-motbox="${seg.dataset.stseg}"]`);if(mb)mb.hidden=b.dataset.st!=='annulee'});
   $('oSave').onclick=()=>{const n=$('oN').value.trim();let nEv=[];
-    grp.forEach(x=>{x.statut=st[x.id];x.notes=n;
+    grp.forEach(x=>{x.statut=st[x.id];x.notes=n;const ms=sheetEl.querySelector(`[data-motsel="${x.id}"]`);if(x.statut==='annulee'&&ms)x.motif=ms.value;else delete x.motif;
       const E={};Object.entries(evs[x.id]).forEach(([t,e])=>{if(e&&+e.n)E[t]=e.c?{n:+e.n,c:e.c.slice(0,300)}:{n:+e.n}});
       if(JSON.stringify(E)!==JSON.stringify(x.evals||{})){if(Object.keys(E).length){x.evals=E;x.evalMaj=Date.now();nEv.push(x)}else{delete x.evals;delete x.evalMaj}}
       if(x.evals&&x.statut==='planifiee'&&x.date<=today())x.statut='faite'});
@@ -1141,24 +1260,84 @@ function openSeance(id){
   $('oDel').onclick=function(){if(this.dataset.armed){const ids=grp.map(x=>x.id);S.seances=S.seances.filter(x=>!ids.includes(x.id));save();closeSheet();render();toast(duo?'Séance à deux supprimée':'Séance supprimée');apresPlanning()}else{this.dataset.armed=1;this.textContent=duo?'Supprimer pour les deux joueurs':'Confirmer la suppression';this.classList.add('solid')}};
 }
 
-function openCours(key){
-  const [gid,date,debut]=key.split('|');const g=S.groupes.find(x=>x.id===gid);if(!g)return;
-  const e=eventsOn(date).find(x=>x.key===key);const ec=S.ecoles.find(x=>x.id===g.ecoleId);
-  const pres=S.presences[key];const off=!!S.annulations[key];
-  openSheet(`${head(esc(g.nom))}
-  <dl class="kv num"><dt>École</dt><dd>${esc(ec?ec.nom:'—')}</dd><dt>Date</dt><dd>${fmtDate(date)}</dd><dt>Horaire</dt><dd>${debut} – ${e.fin} (${e.duree} min)</dd><dt>Court</dt><dd>${esc(e.court)}</dd><dt>Niveau</dt><dd>${esc(g.niveau||'—')}</dd></dl>
+function openCours(keyStr){
+  const keys=keyStr.split(','),date=keys[0].split('|')[keys[0].startsWith('sp|')?0:1];
+  const sp=keys[0].startsWith('sp|')?(S.speciaux||[]).find(x=>'sp|'+x.id===keys[0]):null,d=sp?sp.date:date;
+  const evs=eventsOn(d).filter(x=>keys.includes(x.key));if(!evs.length)return;const e=evs[0],gs=evs.map(x=>x.ref);
+  const ec=S.ecoles.find(x=>x.id===e.ref.ecoleId),off=e.off,manuel=!!S.annulations[e.key],force=!!(S.forces||{})[e.key],fer=ferieOn(d);
+  const blocs0=contenuOf(e.key)||[{debut:e.debut,fin:e.fin,act:'Tennis',theme:''}];UI.blocs=JSON.parse(JSON.stringify(blocs0));
+  const per=periodeOn(d);
+  openSheet(`${head(esc(sp?e.ref.nom:gs.map(g=>g.nom).join(' + ')))}
+  <dl class="kv num"><dt>École</dt><dd>${esc(ec?ec.nom:'—')}</dd><dt>Date</dt><dd>${fmtDate(d)}</dd><dt>Horaire</dt><dd>${e.debut} – ${e.fin} (${e.duree} min)</dd><dt>Court</dt><dd>${esc(e.court)}</dd>
+    <dt>${sp?'Groupes':'Niveau'}</dt><dd>${esc(sp?e.ref.niveau:gs.map(g=>g.niveau||g.nom).join(' + ')||'—')}</dd>${per?`<dt>Période</dt><dd>${esc(per.nom)}${per.cours!==false&&per.type==='session'?` · semaine ${semDans(per,d)}/${nbSem(per)}`:''}</dd>`:''}</dl>
   ${e.conflits.length?`<div class="warnbox">Chevauche : ${e.conflits.map(c=>`${c.debut}–${c.fin} ${esc(evTitle(c))}`).join(', ')}</div>`:''}
-  ${e.conge?'<div class="demo">Cours suspendu : vous êtes en congé à cette date.</div>':off?'<div class="demo">Ce cours est annulé pour cette date.</div>':`<div><h3 style="margin-bottom:6px">Présences <span class="small num" id="pc"></span></h3>
-    ${g.joueurIds.length?`<div class="checks" id="presL">${g.joueurIds.map(id=>{const p=S.joueurs.find(x=>x.id===id);const rr=repCoach(id,key,date,debut);return `<label><input type="checkbox" value="${id}" ${!pres||pres.includes(id)?'checked':''}>${esc(pName(p))} ${repChipC(rr)}</label>`}).join('')}</div>`:'<div class="muted small">Aucun joueur inscrit dans ce groupe.</div>'}</div>`}
-  ${e.horsDispo?`<div class="warnbox" style="background:var(--warn-soft);color:var(--warn)">Ce créneau sort de vos disponibilités (${dayStatus(date)}).</div>`:''}
-  <div class="row">${off||e.conge?'':'<button class="btn pri" type="button" id="cSave">Enregistrer les présences</button>'}
-    ${e.conge?'':`<button class="btn ${off?'pri':'danger'}" type="button" id="cOff">${off?'Rétablir ce cours':'Annuler ce cours'}</button>`}
-    <button class="btn" type="button" data-editgroup="${g.id}">Modifier le groupe</button></div>`);
-  const upd=()=>{const l=$('presL');if(l&&$('pc'))$('pc').textContent=`${l.querySelectorAll(':checked').length}/${g.joueurIds.length}`};upd();
-  if($('presL'))$('presL').onchange=upd;
-  if($('cSave'))$('cSave').onclick=()=>{S.presences[key]=[...$('presL').querySelectorAll(':checked')].map(x=>x.value);save();closeSheet();render();toast('Présences enregistrées')};
-  if($('cOff'))$('cOff').onclick=()=>{if(off)delete S.annulations[key];else S.annulations[key]=1;save();closeSheet();render();toast(off?'Cours rétabli':'Cours annulé pour cette date');apresPlanning()};
+  ${off?`<div class="demo"><b>Cours non effectué</b> · ${esc(e.motif||'Annulé')}</div>`:force&&fer?`<div class="demo">Cours maintenu malgré le jour férié (${esc(fer.nom)}).</div>`:''}
+  ${off?'':`<div><h3 style="margin-bottom:6px">Contenu du cours</h3><div id="blocs" class="list" style="gap:6px"></div>
+    <button class="btn ghost" type="button" id="bAdd" style="align-self:flex-start;margin-top:4px">+ Bloc</button></div>
+    <div><h3 style="margin-bottom:6px">Présences <span class="small num" id="pc"></span></h3>
+    ${gs.map((g,i)=>{const pres=S.presences[keys[i]];return `${gs.length>1?`<div class="small muted" style="margin:6px 0 4px"><b>${esc(g.nom)}</b></div>`:''}${g.joueurIds.length?`<div class="checks" data-presk="${esc(keys[i])}">${g.joueurIds.map(id=>{const p=S.joueurs.find(x=>x.id===id);if(!p)return '';const rr=repCoach(id,keys[i],d,e.debut);return `<label><input type="checkbox" value="${id}" ${!pres||pres.includes(id)?'checked':''}>${esc(pName(p))} ${repChipC(rr)}</label>`}).join('')}</div>`:'<div class="muted small">Aucun joueur inscrit.</div>'}`}).join('')}</div>`}
+  ${e.horsDispo?`<div class="warnbox" style="background:var(--warn-soft);color:var(--warn)">Ce créneau sort de vos disponibilités (${dayStatus(d)}).</div>`:''}
+  <div class="row">${off?'':'<button class="btn pri" type="button" id="cSave">Enregistrer</button>'}
+    ${manuel?'<button class="btn pri" type="button" id="cBack">Rétablir ce cours</button>':e.auto?'<button class="btn" type="button" id="cForce">Maintenir le cours malgré le jour férié</button>':force?'<button class="btn" type="button" id="cUnforce">Annuler (jour férié)</button>':''}
+    ${sp?`<button class="btn" type="button" data-editsp="${sp.id}">Modifier le cours exceptionnel</button>`:`<button class="btn" type="button" data-editgroup="${gs[0].id}">Modifier le groupe</button>`}</div>
+  ${off||e.conge?'':`<details class="panel" style="padding:10px 12px"><summary><b>Annuler ce cours</b> <span class="small muted">(le motif est compté dans le bilan)</span></summary>
+    <div class="f" style="margin-top:8px"><label class="fl">Motif<select id="cMot">${opts(MOTIFS)}</select></label><label class="fl">Précision (facultatif)<input id="cNote" maxlength="80" placeholder="ex. courts inondés"></label></div>
+    <button class="btn danger" type="button" id="cOff" style="margin-top:8px">Annuler ${gs.length>1?'ce cours pour les '+gs.length+' groupes':'ce cours'}</button></details>`}`);
+  const drawB=()=>{const box=$('blocs');if(!box)return;box.innerHTML=UI.blocs.map((b,i)=>`<div class="bloc" data-bi="${i}"><input type="time" step="300" data-bk="debut" value="${b.debut}" aria-label="Début du bloc ${i+1}"><input type="time" step="300" data-bk="fin" value="${b.fin}" aria-label="Fin du bloc ${i+1}">
+    <select data-bk="act" aria-label="Activité">${opts(ACTIVITES,b.act)}</select><input data-bk="theme" value="${esc(b.theme||'')}" placeholder="Thème (ex. régularité)" aria-label="Thème du bloc ${i+1}"><button type="button" class="btn ghost" data-bdel="${i}" aria-label="Supprimer le bloc">✕</button></div>`).join('')};drawB();
+  if($('blocs')){$('blocs').oninput=ev=>{const r=ev.target.closest('[data-bi]');if(r)UI.blocs[+r.dataset.bi][ev.target.dataset.bk]=ev.target.value};
+    $('blocs').onclick=ev=>{const b=ev.target.closest('[data-bdel]');if(b){UI.blocs.splice(+b.dataset.bdel,1);drawB()}};
+    $('bAdd').onclick=()=>{const l=UI.blocs[UI.blocs.length-1];UI.blocs.push({debut:l?l.fin:e.debut,fin:e.fin,act:'Physique',theme:''});drawB()}}
+  const upd=()=>{const L=[...sheetEl.querySelectorAll('[data-presk] input')];if($('pc'))$('pc').textContent=`${L.filter(x=>x.checked).length}/${L.length}`};upd();
+  sheetEl.querySelectorAll('[data-presk]').forEach(x=>x.onchange=upd);
+  const fin=msg=>{save();closeSheet();render();toast(msg);apresPlanning()};
+  if($('cSave'))$('cSave').onclick=()=>{sheetEl.querySelectorAll('[data-presk]').forEach(b=>S.presences[b.dataset.presk]=[...b.querySelectorAll(':checked')].map(x=>x.value));
+    const B=UI.blocs.filter(b=>b.debut&&b.fin).map(b=>({debut:b.debut,fin:b.fin,act:b.act,theme:(b.theme||'').trim()}));S.contenus=S.contenus||{};
+    const vide=B.length===1&&!B[0].theme&&B[0].act==='Tennis'&&B[0].debut===e.debut&&B[0].fin===e.fin;
+    keys.forEach(k=>{if(!B.length||vide)delete S.contenus[k];else S.contenus[k]=B});fin('Cours enregistré')};
+  if($('cOff'))$('cOff').onclick=()=>{const a={motif:$('cMot').value,note:$('cNote').value.trim()};keys.forEach(k=>S.annulations[k]=a);fin('Cours annulé · '+a.motif)};
+  if($('cBack'))$('cBack').onclick=()=>{keys.forEach(k=>delete S.annulations[k]);fin('Cours rétabli')};
+  if($('cForce'))$('cForce').onclick=()=>{S.forces=S.forces||{};keys.forEach(k=>S.forces[k]=1);fin('Cours maintenu')};
+  if($('cUnforce'))$('cUnforce').onclick=()=>{keys.forEach(k=>delete S.forces[k]);fin('Cours annulé (jour férié)')};
 }
+/* Cours exceptionnel : séance collective hors créneaux habituels (semaine physique, rattrapage…) */
+function formSpecial(x,preset){const isNew=!x;x=x||Object.assign({id:uid(),date:today(),debut:'18:30',duree:120,court:S.courts[0]||'Court 1',groupeIds:[],titre:''},preset||{});
+  openSheet(`${head(isNew?'Cours exceptionnel':'Modifier le cours exceptionnel')}
+  <p class="small muted" style="margin:0">Un cours en plus des créneaux habituels : rattrapage, semaine physique, stage… Plusieurs groupes peuvent s’entraîner ensemble.</p>
+  <div class="f"><label class="fl full">Intitulé<input id="xT" value="${esc(x.titre)}" placeholder="ex. Semaine physique, rattrapage"></label>
+    <label class="fl">Date<input id="xD" type="date" value="${x.date}"></label><label class="fl">Début<input id="xH" type="time" step="900" value="${x.debut}"></label>
+    <label class="fl">Durée<select id="xDu">${opts([45,60,75,90,105,120,150,180].map(d=>[d,fmtH(d)]),x.duree)}</select></label><label class="fl">Court<select id="xC">${opts(S.courts,x.court)}</select></label></div>
+  <div><h3 style="margin-bottom:6px">Groupes concernés</h3><div class="checks" id="xG">${S.groupes.map(g=>`<label><input type="checkbox" value="${g.id}" ${x.groupeIds.includes(g.id)?'checked':''}>${esc(g.nom)} <span class="small muted">${g.joueurIds.length} joueurs</span></label>`).join('')||'<span class="small muted">Aucun groupe.</span>'}</div></div>
+  <span id="xMsg" class="small"></span>
+  <div class="row"><button class="btn pri" type="button" id="xSave">Enregistrer</button>${isNew?'':'<button class="btn danger" type="button" id="xDel">Supprimer</button>'}</div>`);
+  $('xSave').onclick=()=>{const ids=[...$('xG').querySelectorAll(':checked')].map(i=>i.value);if(!ids.length||!$('xD').value){$('xMsg').textContent='Choisissez une date et au moins un groupe.';$('xMsg').style.color='var(--danger)';return}
+    Object.assign(x,{titre:$('xT').value.trim()||'Cours exceptionnel',date:$('xD').value,debut:$('xH').value||'18:30',duree:+$('xDu').value,court:$('xC').value,groupeIds:ids});
+    S.speciaux=S.speciaux||[];if(isNew)S.speciaux.push(x);save();closeSheet();render();toast('Cours exceptionnel enregistré');apresPlanning()};
+  if($('xDel'))$('xDel').onclick=function(){if(!this.dataset.armed){this.dataset.armed=1;this.textContent='Confirmer la suppression';this.classList.add('solid');return}
+    S.speciaux=S.speciaux.filter(y=>y.id!==x.id);delete S.annulations['sp|'+x.id];if(S.contenus)delete S.contenus['sp|'+x.id];save();closeSheet();render();toast('Cours exceptionnel supprimé');apresPlanning()}}
+/* Saison : périodes et jours fériés */
+function formSaison(){const s0=SA()||{nom:'Saison '+today().slice(0,4),debut:today(),fin:addDays(today(),300),periodes:[],feries:[]};
+  UI.sa=JSON.parse(JSON.stringify(s0));
+  const draw=()=>{$('saP').innerHTML=UI.sa.periodes.map((p,i)=>`<div class="sper" data-pi="${i}"><input data-pk="nom" value="${esc(p.nom)}" placeholder="Nom (ex. Session 1)" aria-label="Nom de la période">
+      <select data-pk="type" aria-label="Type">${opts(Object.entries(PTYPES).map(([k,[l]])=>[k,l]),p.type)}</select>
+      <input type="date" data-pk="debut" value="${p.debut}" aria-label="Début"><input type="date" data-pk="fin" value="${p.fin}" aria-label="Fin">
+      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-pk="cours" ${p.cours!==false?'checked':''}>Cours collectifs</label>
+      <input data-pk="note" value="${esc(p.note||'')}" placeholder="Note (facultatif)" aria-label="Note"><button type="button" class="btn ghost" data-pdel="${i}" aria-label="Supprimer la période">✕</button></div>`).join('')||'<div class="small muted">Aucune période.</div>';
+    $('saF').innerHTML=UI.sa.feries.map((f,i)=>`<div class="sfer" data-fi="${i}"><input type="date" data-fk="date" value="${f.date}" aria-label="Date"><input data-fk="nom" value="${esc(f.nom)}" placeholder="Fête" aria-label="Nom du jour férié"><button type="button" class="btn ghost" data-fdel="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<div class="small muted">Aucun jour férié.</div>'};
+  openSheet(`${head('Saison')}
+  <div class="f"><label class="fl full">Nom<input id="saN" value="${esc(UI.sa.nom)}"></label><label class="fl">Début<input id="saD" type="date" value="${UI.sa.debut}"></label><label class="fl">Fin<input id="saE" type="date" value="${UI.sa.fin}"></label></div>
+  <div><h3 style="margin-bottom:6px">Périodes</h3><p class="small muted" style="margin:0 0 6px">Décochez « Cours collectifs » pour une semaine off, un tournoi ou des tests : les créneaux des groupes ne sont pas programmés pendant la période.</p><div id="saP" class="list" style="gap:6px"></div><button class="btn ghost" type="button" id="saPA" style="margin-top:4px">+ Période</button></div>
+  <div><h3 style="margin-bottom:6px">Jours fériés</h3><p class="small muted" style="margin:0 0 6px">Les cours tombant un jour férié sont annulés d’office, avec ce motif (vous pouvez les maintenir au cas par cas).</p><div id="saF" class="list" style="gap:6px"></div><button class="btn ghost" type="button" id="saFA" style="margin-top:4px">+ Jour férié</button></div>
+  <span id="saMsg" class="small"></span><div class="row"><button class="btn pri" type="button" id="saSave">Enregistrer la saison</button></div>`);draw();
+  $('saP').oninput=$('saP').onchange=ev=>{const r=ev.target.closest('[data-pi]');if(!r)return;const k=ev.target.dataset.pk;UI.sa.periodes[+r.dataset.pi][k]=k==='cours'?ev.target.checked:ev.target.value};
+  $('saF').oninput=ev=>{const r=ev.target.closest('[data-fi]');if(r)UI.sa.feries[+r.dataset.fi][ev.target.dataset.fk]=ev.target.value};
+  $('saP').onclick=ev=>{const b=ev.target.closest('[data-pdel]');if(b){UI.sa.periodes.splice(+b.dataset.pdel,1);draw()}};
+  $('saF').onclick=ev=>{const b=ev.target.closest('[data-fdel]');if(b){UI.sa.feries.splice(+b.dataset.fdel,1);draw()}};
+  $('saPA').onclick=()=>{const l=UI.sa.periodes[UI.sa.periodes.length-1],d=l?addDays(l.fin,1):$('saD').value;UI.sa.periodes.push({id:uid(),nom:'',type:'session',debut:d,fin:addDays(d,6),cours:true,note:''});draw()};
+  $('saFA').onclick=()=>{UI.sa.feries.push({date:today(),nom:''});draw()};
+  $('saSave').onclick=()=>{const sa=UI.sa;sa.nom=$('saN').value.trim()||'Saison';sa.debut=$('saD').value;sa.fin=$('saE').value;
+    const bad=sa.periodes.find(p=>!p.nom||!p.debut||!p.fin||p.fin<p.debut);if(bad||!sa.debut||!sa.fin||sa.fin<sa.debut){$('saMsg').textContent='Chaque période doit avoir un nom et une date de fin après la date de début.';$('saMsg').style.color='var(--danger)';return}
+    sa.feries=sa.feries.filter(f=>f.date&&f.nom);sa.periodes.sort((a,b)=>a.debut.localeCompare(b.debut));S.saison=sa;save();closeSheet();render();toast('Saison enregistrée');apresPlanning()}}
 
 function formJoueur(p){
   const isNew=!p;p=p||{id:uid(),prenom:'',nom:'',naissance:'',niveau:NIVEAUX[0],tel:'',notes:'',niveaux:{},evol:[],classements:[],externes:{}};
@@ -1650,6 +1829,25 @@ function buildPdf(p){
     doc.text(T(`${pName(p)} - fiche éditée le ${fmtShort(t)} ${t.slice(0,4)} - Coach ${S.coach||''}, ${S.club||''}`),M,292);doc.text(`Page ${i}/${np}`,W-M,292,{align:'right'})}
   return doc;
 }
+async function exportBilan(btn){
+  if(!window.jspdf||!window.jspdf.jsPDF){toast('Le générateur PDF n’a pas pu se charger : vérifiez la connexion.');return}
+  const L=plagesBilan(),sel=L.find(x=>x[0]===UI.bil)||L[0],[,lab,a,b]=sel,B=calcBilan(a,b),T=B.T,t=today();
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),X=pdfTxt,W=210,M=14,G=[29,92,69],MU=[91,106,97],INK=[21,35,28],LN=[216,224,214];
+  let y=18;const font=(sz,st='normal',c=INK)=>{doc.setFont('helvetica',st);doc.setFontSize(sz);doc.setTextColor(...c)};
+  const table=o=>{doc.autoTable(Object.assign({startY:y,margin:{left:M,right:M},theme:'grid',styles:{font:'helvetica',fontSize:8.6,cellPadding:1.7,textColor:INK,lineColor:LN,lineWidth:.2},headStyles:{fillColor:G,textColor:255,fontStyle:'bold'}},o));y=doc.lastAutoTable.finalY+5};
+  font(16,'bold',G);doc.text(X(`Bilan des séances - ${S.club||''}`),M,y);y+=6;font(9.5,'normal',MU);
+  doc.text(X(`${lab} : du ${fmtDate(a)} au ${fmtDate(b)} - ${S.coach?'Coach '+S.coach+' - ':''}édité le ${fmtShort(t)} ${t.slice(0,4)}`),M,y);y+=7;
+  const tx=T.eff+T.ann?Math.round(T.eff/(T.eff+T.ann)*100)+' %':'-';
+  table({head:[['Cours collectifs effectués','Non effectués','Taux de réalisation','Heures','À venir']],body:[[T.eff,T.ann,tx,fmtH(T.min),T.av].map(String)],styles:{fontSize:10,halign:'center',font:'helvetica'}});
+  const mot=Object.entries(T.mot).sort((x,y)=>y[1]-x[1]);
+  if(mot.length)table({head:[['Motif des cours non effectués','Nombre']],body:mot.map(([m,n])=>[X(m),String(n)]),columnStyles:{1:{halign:'center',cellWidth:30}}});
+  S.ecoles.forEach(ec=>{const R=B.G.filter(r=>r.g.ecoleId===ec.id);if(!R.length)return;font(11,'bold',G);doc.text(X(ec.nom),M,y);y+=3;
+    table({head:[['Groupe','Prévus','Effectués','Non eff.','À venir','Heures','Motifs']],body:R.map(r=>[X(r.g.nom),r.prev,r.eff,r.ann,r.av,fmtH(r.min),X(Object.entries(r.mot).map(([m,n])=>`${m} ${n}`).join(', ')||'-')].map(String)),
+      columnStyles:{1:{halign:'center'},2:{halign:'center',fontStyle:'bold'},3:{halign:'center'},4:{halign:'center'}}})});
+  font(11,'bold',G);doc.text(X('Séances individuelles'),M,y);y+=3;
+  table({head:[['Faites','Annulées','Absences du joueur','Sans statut']],body:[[B.I.faite,B.I.annulee,B.I.absent,B.I.nr||0].map(String)],styles:{halign:'center',font:'helvetica'}});
+  const np=doc.getNumberOfPages();for(let i=1;i<=np;i++){doc.setPage(i);font(7.6,'normal',MU);doc.text(`Page ${i}/${np}`,W-M,292,{align:'right'})}
+  await offerFile(`Bilan_seances_${a}_${b}.pdf`,doc.output('blob'),'Bilan PDF prêt')}
 async function exportPdf(pid,btn){
   const p=S.joueurs.find(x=>x.id===pid);if(!p)return;
   if(!window.jspdf||!window.jspdf.jsPDF){toast('Le générateur PDF n’a pas pu se charger : vérifiez la connexion.');return}
@@ -1723,16 +1921,18 @@ async function driveFolder(interactive){
 /* ---- Contenu publié pour un joueur ---- */
 function payloadJoueur(p){
   const t=today(),gs=S.groupes.filter(g=>g.joueurIds.includes(p.id)),cours=[];
-  for(let i=-21;i<=63;i++){const d=addDays(t,i);eventsOn(d).forEach(e=>{if(e.type!=='col'||!e.ref.joueurIds.includes(p.id))return;
+  for(let i=-21;i<=63;i++){const d=addDays(t,i),L=eventsOn(d);L.forEach(e=>{if(e.type!=='col'||!e.ref.joueurIds.includes(p.id))return;
     const ec=S.ecoles.find(x=>x.id===e.ref.ecoleId)||{},pr=S.presences[e.key];
-    cours.push({key:e.key,date:d,debut:e.debut,fin:e.fin,court:e.court,groupe:e.ref.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:e.ref.niveau||'',
-      annule:!!e.off,motif:e.conge?'Congé du coach':e.off?'Cours annulé':'',present:pr?pr.includes(p.id):null})})}
+    const avec=e.ens?L.filter(x=>x!==e&&x.type==='col'&&x.ens===e.ens&&x.debut===e.debut).map(x=>x.ref.nom):[];
+    cours.push({key:e.key,date:d,debut:e.debut,fin:e.fin,court:e.court,groupe:e.ref.nom+(avec.length?' + '+avec.join(' + '):''),ecole:ec.nom||'',lieu:ec.lieu||'',niveau:e.special?e.ref.niveau:e.ref.niveau||'',
+      annule:!!e.off,motif:e.off?(e.motif||'Cours annulé'):'',contenu:e.off?'':contenuTxt(e.key),present:pr?pr.includes(p.id):null})})}
   const {m,tot,n}=tauxThemes(p.id);
   return {app:'coach-uscm',type:'joueur',v:1,publie:new Date().toISOString(),
     coach:{nom:S.coach||'',club:S.club||'',instance:instTxt(),tel:S.tel||''},
     joueur:{id:p.id,prenom:p.prenom,nom:p.nom,categorie:categorie(p.naissance),niveau:p.niveau,objectifs:p.notes||'',classements:p.classements||[]},
     themesCoach:CT(),niveaux:p.niveaux||{},evol:(p.evol||[]).slice(-30),externes:Object.fromEntries(THEMES.filter(x=>!isCT(x)).map(x=>[x,extLabel(p,x)])),
     seances:S.seances.filter(s=>s.joueurId===p.id&&(s.date>=addDays(t,-180)||(evalsOk(s)&&s.date>=addDays(t,-730)))).map(s=>({...(evalsOk(s)?{evals:s.evals,evalMaj:s.evalMaj||0}:{}),id:s.id,avec:duoSiblings(s).map(x=>{const q=S.joueurs.find(y=>y.id===x.joueurId);return q?q.prenom+' '+q.nom:''}).filter(Boolean).join(', '),date:s.date,debut:s.debut,duree:+s.duree,court:s.court,themes:thList(s),statut:s.statut,notes:s.notes||''})),
+    saison:SA()?{nom:SA().nom,debut:SA().debut,fin:SA().fin,periodes:SA().periodes.map(({nom,debut,fin,type,cours,note})=>({nom,debut,fin,type,cours,note:note||''})),feries:SA().feries||[]}:null,
     cours,groupes:gs.map(g=>{const ec=S.ecoles.find(x=>x.id===g.ecoleId)||{};return {nom:g.nom,ecole:ec.nom||'',lieu:ec.lieu||'',niveau:g.niveau||'',creneaux:g.creneaux.map(c=>({jour:+c.jour,debut:c.debut,duree:+c.duree,court:c.court}))}}),
     conges:(S.conges||[]).filter(c=>c.fin>=t).map(c=>({debut:c.debut,fin:c.fin,motif:c.motif||''})),
     matchs:matchesOf(p.id).slice(0,20).map(({joueurId,...x})=>x),taux:{m,tot,n}}}
@@ -1901,13 +2101,17 @@ function agendaJ(list,from,to){const it=[];
 function jEv(e,big){
   const sub=e.type==='ind'?`<span class="chip ind">Individuel</span>${esc(e.court)} · ${esc(e.coach)}`:`<span class="chip col">Collectif</span>${esc(e.ecole||'')}${e.lieu?' · '+esc(e.lieu):''} · ${esc(e.court)}`;
   const off=e.type==='col'?e.annule:e.statut==='annulee';
-  const th=e.type==='ind'?`<span class="jth">${e.themes.map(x=>`<span class="chip">${esc(x.t)}${e.themes.length>1?' '+x.w+' %':''}</span>`).join('')}</span>`:(e.niveau?`<span class="small muted">${esc(e.niveau)}</span>`:'');
+  const th=e.type==='ind'?`<span class="jth">${e.themes.map(x=>`<span class="chip">${esc(x.t)}${e.themes.length>1?' '+x.w+' %':''}</span>`).join('')}</span>`:(e.contenu?`<span class="small"><b>${esc(e.contenu)}</b></span>`:e.niveau?`<span class="small muted">${esc(e.niveau)}</span>`:'');
   return `<div class="ev ${e.type} ${off?'off':''} ${big?'jbig':''}" style="cursor:default"><span class="t-time num">${e.debut}<i>${e.fin}</i></span>
     <span class="t-name">${esc(e.type==='ind'?(e.avec?'Séance à deux':'Séance individuelle'):e.groupe)}${e.avec?` <span class="small muted" style="font-weight:600">avec ${esc(e.avec)}</span>`:''}${off?` <span class="chip st-annulee">${esc(e.motif||'Annulé')}</span>`:''}</span>
     <span class="t-sub">${sub}</span>${th?`<span></span><span class="t-sub">${th}</span>`:''}${!off&&e.date>=today()&&repJ(e)?`<span></span><span class="t-sub">${repChipJ(e)}</span>`:''}</div>`}
 function jHeader(){const {noms,sel,list}=srcSel();
   return `${noms.length>1?`<div class="seg">${noms.map(n=>`<button type="button" data-jsel="${esc(n)}" aria-pressed="${n===sel}">${esc(n.split(' ')[0])}</button>`).join('')}</div>`:''}
   ${list.length?`<div class="small muted">Programme publié par ${list.map(s=>`${esc(s.data.coach.nom?'Coach '+s.data.coach.nom:'le coach')} le ${fmtShort(s.data.publie.slice(0,10))}`).join(' · ')}${list.some(s=>s.err)?` · <span style="color:var(--warn)">${esc(list.find(s=>s.err).err)}</span>`:''}</div>`:''}`}
+function saisonJ(list){const sa=(list.find(s=>s.data.saison)||{data:{}}).data.saison;if(!sa)return '';const t=today();
+  const cur=sa.periodes.filter(p=>p.debut<=t&&t<=p.fin).sort((a,b)=>(parse(a.fin)-parse(a.debut))-(parse(b.fin)-parse(b.debut)))[0],nx=sa.periodes.filter(p=>p.debut>t).slice(0,2);
+  return `<div class="panel"><div class="small muted">${esc(sa.nom)}</div><div style="font-weight:700">${cur?esc(cur.nom)+(cur.cours!==false&&cur.type==='session'?` · semaine ${semDans(cur,t)} sur ${nbSem(cur)}`:''):'Hors période d’entraînement'}</div>
+    ${cur&&cur.cours===false?'<div class="small">Pas de cours collectif pendant cette période.</div>':''}${nx.length?`<div class="small muted">Ensuite : ${nx.map(p=>`${esc(p.nom)} (dès le ${fmtShort(p.debut)})`).join(' · ')}</div>`:''}</div>`}
 function vJProg(){
   const {list}=srcSel();if(!list.length)return vJVide();
   const t=today(),ag=agendaJ(list,t,addDays(t,27)),nowH=new Date().toTimeString().slice(0,5);
@@ -1919,6 +2123,7 @@ function vJProg(){
   return `${jHeader()}${bandeauNouveau(list)}
   ${todo.length?`<section class="list"><h3>À confirmer <span class="chip prio">${todo.length}</span></h3><p class="small muted" style="margin:0">Indique à ton coach si tu seras là.</p>
     ${todo.map(e=>`<div class="panel jconf"><div class="jdate" style="font-size:16px">${e.date===t?'Aujourd’hui':e.date===addDays(t,1)?'Demain':fmtDate(e.date)}</div>${jEv(e)}${repBtns(e,ar.indexOf(e))}</div>`).join('')}</section>`:''}
+  ${saisonJ(list)}
   ${cg.map(c=>`<div class="demo">Coach ${esc(c.coach||'')} absent du ${fmtShort(c.debut)} au ${fmtShort(c.fin)}${c.motif?` (${esc(c.motif)})`:''} : pas d’entraînement avec lui sur cette période.</div>`).join('')}
   ${next?`<section class="list"><h3>Prochain entraînement</h3><div class="panel jnext"><div class="jdate">${next.date===t?'Aujourd’hui':next.date===addDays(t,1)?'Demain':fmtDate(next.date)}</div>${jEv(next,true)}${ar.includes(next)?repBtns(next,ar.indexOf(next)):''}</div></section>`:''}
   <section class="list"><h3>Les 4 prochaines semaines</h3>
@@ -2094,7 +2299,7 @@ function repCoach(pid,key,d,h){const p=S.joueurs.find(x=>x.id===pid);if(!p||!p.p
   const r=(S.reponses||{})[`${pid}|${key}`];if(!r)return {st:'att'};const g=normSig(r.g);return {...r,ancien:!!g&&g!==`${d}|${h}`}}
 function repChipC(r){if(!r)return '';if(r.ancien)return '<span class="chip mmixte" title="Le joueur a répondu avant que vous changiez la date ou l’heure">⏳ À reconfirmer (horaire changé)</span>';
   return r.st==='ok'?'<span class="chip mfort">✓ Confirmé</span>':r.st==='non'?'<span class="chip mfaible">✗ Désolé</span>':'<span class="chip">⏳ En attente</span>'}
-function repResumeCol(e){const L=e.ref.joueurIds.map(id=>repCoach(id,e.key,e.date,e.debut)).filter(Boolean);if(!L.length)return '';
+function repResumeCol(e){const ks=e.keys||[e.key],L=[].concat(...(e.refs||[e.ref]).map((g,i)=>g.joueurIds.map(id=>repCoach(id,ks[i],e.date,e.debut)))).filter(Boolean);if(!L.length)return '';
   const ok=L.filter(r=>r.st==='ok'&&!r.ancien).length,non=L.filter(r=>r.st==='non'&&!r.ancien).length;
   return ` <span class="chip mfort">✓ ${ok}</span>${non?` <span class="chip mfaible">✗ ${non}</span>`:''}`}
 function panneauReponses(){if(!CFG.relaisUrl||!partages().length)return '';const t=today(),it=[];
@@ -2200,8 +2405,13 @@ document.addEventListener('click',ev=>{
   if(d.editschool)return formEcole(S.ecoles.find(x=>x.id===d.editschool));
   if(d.newgroup!==undefined)return formGroupe(null,d.newgroup);
   if(d.editgroup)return formGroupe(S.groupes.find(x=>x.id===d.editgroup));
+  if(d.ectab){UI.ectab=d.ectab;UI.ecTab=d.ectab;return render()}
+  if(d.editsaison!==undefined)return formSaison();
+  if(d.newsp!==undefined)return formSpecial();
+  if(d.editsp)return formSpecial((S.speciaux||[]).find(x=>x.id===d.editsp));
   if(d.wk!==undefined){UI.week=d.wk==='0'?monday(today()):addDays(UI.week,7*+d.wk);return render()}
   switch(t.id){
+    case 'bilPdf':return exportBilan(t);
     case 'majCheck':return verifierMaj(true);
     case 'jPinCreate':return creerPin();
     case 'jPinOk':return verifierPin();
@@ -2255,6 +2465,7 @@ document.addEventListener('click',ev=>{
   }
 });
 document.addEventListener('input',ev=>{if(ev.target.id==='q'){UI.q=ev.target.value;const pos=ev.target.selectionStart;render();const q=$('q');q.focus();q.setSelectionRange(pos,pos)}});
+document.addEventListener('change',ev=>{if(ev.target.id==='bilSel'){UI.bil=ev.target.value;render();return}});
 document.addEventListener('change',ev=>{const el=ev.target,k=el.dataset&&el.dataset.dk;if(!k)return;const row=el.closest('[data-j]');if(!row)return;const j=+row.dataset.j;
   if(k==='on'){UI.dd[j]=el.checked?[j<=5?{debut:'16:00',fin:'21:00'}:{debut:'09:00',fin:'13:00'}]:[];$('dispoBox').innerHTML=dispoEditor();return}
   const ri=+el.closest('[data-ri]').dataset.ri;UI.dd[j][ri][k]=el.value});
