@@ -578,6 +578,17 @@ function importListe(o){
       S.speciaux.push({id:x.id,titre:x.titre||'Cours exceptionnel',date:x.date,debut:x.debut,duree:+x.duree,court:x.court||court0,groupeIds:ids});if(x.contenu)S.contenus['sp|'+x.id]=x.contenu});
     S.demo=false;save();closeSheet();render();apresPlanning();
     toast(`${nn} joueur${nn>1?'s':''} ajouté${nn>1?'s':''}${nr?`, ${nr} rattaché${nr>1?'s':''}`:''}${nd?' · exemple effacé':''}`)}}
+/* ---- Import d'une liste par code : fichier chiffré déposé sur le site de l'appli (illisible sans le code) ---- */
+function importCodeHtml(){return `<div class="panel list" id="impPanel"><h3>Importer une liste avec un code</h3>
+    <p class="small muted" style="margin:0">Collez le code d’import reçu (école, groupes, joueurs, saison). Vos données actuelles sont conservées ; les joueurs déjà présents ne sont pas dupliqués.</p>
+    <div class="row"><input id="impCode" class="search" style="flex:1;min-width:200px" placeholder="Code d’import" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn pri" type="button" id="impCodeGo">Importer</button></div><span id="impMsg" class="small"></span></div>`}
+async function importParCode(code){const m=$('impMsg'),say=(t,c)=>{if(m){m.textContent=t;m.style.color=c||''}};
+  code=String(code||'').trim().replace(/^.*#imp=/,'');const i=code.indexOf('.');if(i<1){say('Code incomplet : vérifiez qu’il a été copié en entier.','var(--danger)');return}
+  const id=code.slice(0,i),key=code.slice(i+1);if(!/^[A-Za-z0-9_-]{6,40}$/.test(id)){say('Code invalide.','var(--danger)');return}
+  const base=(CFG.playerUrl||location.href).replace(/[#?].*$/,'').replace(/[^/]*$/,'');say('Téléchargement…');
+  try{const r=await fetch(`${base}imports/${id}.json?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error('404');
+    const o=await dechiffrer(key,await r.text());if(!o||o.type!=='liste')throw new Error('format');say('');importListe(o)}
+  catch(e){say(String(e.message)==='404'?'Liste introuvable : vérifiez le code et la connexion.':'Code incorrect ou liste illisible.','var(--danger)')}}
 function seed(){
   const t=today(), m=monday(t), d=(w,j)=>addDays(m,(w*7)+j-1);
   const J=SEED_J
@@ -841,6 +852,7 @@ function vJoueurs(){
   const q=UI.q.toLowerCase(), t=today();
   const list=S.joueurs.filter(p=>!q||pName(p).toLowerCase().includes(q)||categorie(p.naissance).toLowerCase()===q).sort((a,b)=>a.nom.localeCompare(b.nom));
   return `<div class="row between"><h2>Joueurs <span class="muted num" style="font-size:20px">${S.joueurs.length}</span></h2><div class="row"><button class="btn" type="button" data-mimport="">Importer un carnet de match</button><button class="btn pri" type="button" data-newplayer="">+ Joueur</button></div></div>
+  ${demoInfo().js.length?`<div class="demo"><b>Ces joueurs sont des exemples.</b> Importez votre liste avec le code reçu, ou effacez l’exemple.<div class="row" style="margin-top:8px"><button class="btn pri" type="button" data-impcode="">Importer une liste avec un code</button><button class="btn" type="button" id="unDemo">Effacer l’exemple</button></div></div>`:''}
   <input class="search" id="q" type="search" placeholder="Rechercher un nom ou une catégorie (U12…)" value="${esc(UI.q)}">
   ${list.length?`<div class="plist">${list.map(p=>{
     const nx=S.seances.filter(s=>s.joueurId===p.id&&s.date>=t&&s.statut==='planifiee').sort((a,b)=>(a.date+a.debut).localeCompare(b.date+b.debut))[0];
@@ -977,6 +989,7 @@ function vReglages(){
       <label class="fl" style="flex-direction:row;align-items:center;gap:8px">Prévenir<select id="rAv">${opts([[15,'15 min'],[30,'30 min'],[60,'1 h'],[120,'2 h']],(S.rappels||{}).avant||30)}</select>avant</label></div>
     <span id="rMsg" class="small muted"></span></div>`:''}
   ${partageReglagesHtml()}
+  ${importCodeHtml()}
   <div class="panel list"><h3>Sauvegarde</h3>
     <p class="small muted" style="margin:0">Les données restent sur cet appareil. Exportez un fichier de sauvegarde pour les conserver ou les transférer sur un autre téléphone, puis importez-le pour les restaurer. Le copier-coller fonctionne aussi. « Importer un fichier » accepte aussi une liste d’école (groupes et joueurs), ajoutée sans effacer vos données.</p>
     <div class="row"><button class="btn pri" type="button" id="fileBk">Exporter un fichier de sauvegarde</button><button class="btn" type="button" id="loadBk">Importer un fichier</button><button class="btn" type="button" id="copyBk">Copier la sauvegarde</button></div>
@@ -2407,6 +2420,7 @@ document.addEventListener('click',ev=>{
   if(d.editgroup)return formGroupe(S.groupes.find(x=>x.id===d.editgroup));
   if(d.ectab){UI.ectab=d.ectab;UI.ecTab=d.ectab;return render()}
   if(d.editsaison!==undefined)return formSaison();
+  if(d.impcode!==undefined){UI.tab='reglages';go('reglages');setTimeout(()=>{const x=$('impPanel');if(x){x.scrollIntoView({block:'center'});$('impCode').focus()}},120);return}
   if(d.newsp!==undefined)return formSpecial();
   if(d.editsp)return formSpecial((S.speciaux||[]).find(x=>x.id===d.editsp));
   if(d.wk!==undefined){UI.week=d.wk==='0'?monday(today()):addDays(UI.week,7*+d.wk);return render()}
@@ -2456,7 +2470,8 @@ document.addEventListener('click',ev=>{
         if(o&&o.type==='liste'&&o.ecole&&Array.isArray(o.groupes)&&Array.isArray(o.joueurs))return importListe(o);
         try{restoreFrom(o)}catch(e){toast('Ce fichier n’est pas une sauvegarde de Coach Tennis')}};inp.click();return}
     case 'unDemo':{const n=retirerDemo();save();render();apresPlanning();return toast(n?'Données d’exemple effacées':'Aucune donnée d’exemple')}
-    case 'restoreBk':try{restoreFrom(JSON.parse($('bkIn').value))}
+    case 'impCodeGo':return importParCode($('impCode').value);
+    case 'restoreBk':try{const o=JSON.parse($('bkIn').value);if(o&&o.type==='liste'&&o.ecole)return importListe(o);restoreFrom(o)}
       catch(e){$('bkMsg').textContent='Ce texte n’est pas une sauvegarde valide de l’application.';$('bkMsg').style.color='var(--danger)'}return;
     case 'wipe':$('wipeConfirm').innerHTML='<div class="warnbox">Tous les joueurs, séances et écoles seront effacés de cet appareil.</div><div class="row" style="margin-top:8px"><button class="btn danger solid" type="button" id="wipeYes">Tout effacer</button></div>';return;
     case 'wipeYes':S={v:1,demo:false,coach:S.coach,club:S.club,courts:S.courts,joueurs:[],ecoles:[],groupes:[],seances:[],annulations:{},presences:{},dispo:S.dispo,conges:[],matchs:[],

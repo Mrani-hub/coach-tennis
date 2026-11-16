@@ -179,6 +179,11 @@ if (PWA) {
     natifMin: Number(String(readFileSync(new URL('../natif-min.txt', import.meta.url), 'utf8')).trim()) || 0
   }, null, 2));
 }
+/* 5 bis. Listes d'import chiffrées (illisibles sans le code d'import donné au coach) */
+if (PWA && existsSync(join(root, 'imports'))) {
+  mkdirSync(join(www, 'imports'), { recursive: true });
+  for (const f of readdirSync(join(root, 'imports'))) if (/^[A-Za-z0-9_-]+\.json$/.test(f)) copyFileSync(join(root, 'imports', f), join(www, 'imports', f));
+}
 /* 6. Page de confidentialité (demandée par Google pour l'écran de connexion) */
 if (PWA) {
   const repo = process.env.GITHUB_REPOSITORY || '';
